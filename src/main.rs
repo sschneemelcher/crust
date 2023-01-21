@@ -1,4 +1,6 @@
+use std::env::{current_dir, set_current_dir, var};
 use std::io::{stdin, stdout, Write};
+use std::path::PathBuf;
 use std::process::Command;
 
 struct Input {
@@ -17,7 +19,7 @@ enum Builtins {
 }
 
 fn print_prompt() {
-    let prompt = match std::env::var("PS2") {
+    let prompt = match var("PS2") {
         Ok(val) => val,
         Err(_) => "$ ".to_string(),
     };
@@ -49,6 +51,7 @@ fn parse_input(line: String) -> Input {
             parsed_input.builtin = Builtins::Exit;
             return parsed_input;
         }
+        Some("cd") => parsed_input.builtin = Builtins::CD,
         Some(command) => {
             parsed_input.command = command.to_string();
         }
@@ -95,7 +98,17 @@ fn main() {
             Builtins::Exit => return,
             Builtins::Echo => println! {"{:#?}", input.args.join(" ")},
             Builtins::Alias => {}
-            Builtins::CD => {}
+            Builtins::CD => match current_dir() {
+                // Ok(path) => match set_current_dir(path.extend(input.args)) {
+                Ok(mut path) => {
+                    <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
+                    match set_current_dir(path) {
+                        Ok(_) => {}
+                        Err(_) => {}
+                    }
+                }
+                Err(e) => println! {"{:#?}", e},
+            },
         }
     }
 }
