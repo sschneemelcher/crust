@@ -1,8 +1,15 @@
-use std::io::stdin;
-use std::process::{Child, Command};
+use std::io::{stdin, stdout, Write};
+use std::process::Command;
 
 fn main() {
     loop {
+        let mut lock = stdout().lock();
+        write!(lock, "$ ").unwrap();
+        match lock.flush() {
+            Ok(_) => {}
+            Err(e) => println!("{:#?}", e),
+        }
+
         let mut input = String::new();
 
         stdin().read_line(&mut input).expect("expected a line");
@@ -22,16 +29,16 @@ fn main() {
                 }
                 match cmd.spawn() {
                     // spawn the processed command
-                    Ok(Child {
-                        stdin: _,
-                        mut stdout,
-                        stderr: _,
-                        ..
-                    }) => match stdout.take() {
-                        None => {}
-                        Some(output) => println!("{:#?}", output),
-                    },
-
+                    Ok(mut child) => {
+                        match child.wait() {
+                            Ok(_) => {}
+                            Err(e) => println!("{:#?}", e),
+                        }
+                        match child.stdout.take() {
+                            None => {}
+                            Some(output) => println!("{:#?}", output),
+                        }
+                    }
                     // if spawning failed, print message
                     Err(e) => println!("{:#?}", e),
                 }
