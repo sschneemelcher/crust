@@ -1,38 +1,81 @@
 use std::io::{stdin, stdout, Write};
 use std::process::Command;
 
+struct Input {
+    command: String,
+    args: Vec<String>,
+    bg: bool,
+    builtin: Builtins,
+}
+
+enum Builtins {
+    None,
+    Exit,
+    CD,
+    Echo,
+    Alias,
+}
+
+fn print_prompt() {
+    let mut lock = stdout().lock();
+    write!(lock, "$ ").unwrap();
+    match lock.flush() {
+        Ok(_) => {}
+        Err(e) => println!("{:#?}", e),
+    }
+}
+
+fn parse_input(line: String) -> Input {
+    let mut parsed_input = Input {
+        command: "".to_string(),
+        args: vec![],
+        builtin: Builtins::None,
+        bg: false,
+    };
+
+    let mut words = line.split_whitespace();
+
+    // parse the first word of the input
+    match words.next() {
+        // match the first word of the input
+        None => return parsed_input,
+        Some("exit") => {
+            parsed_input.builtin = Builtins::Exit;
+            return parsed_input;
+        }
+        Some(command) => {
+            parsed_input.command = command.to_string();
+        }
+    }
+
+    for word in words {
+        match word {
+            "&" => parsed_input.bg = true,
+            arg => parsed_input.args.push(arg.to_string()),
+        }
+    }
+    return parsed_input;
+}
+
 fn main() {
     loop {
-        let mut lock = stdout().lock();
-        write!(lock, "$ ").unwrap();
-        match lock.flush() {
-            Ok(_) => {}
-            Err(e) => println!("{:#?}", e),
-        }
+        print_prompt();
 
-        let mut input = String::new();
+        let mut input_buf = String::new();
+        stdin().read_line(&mut input_buf).expect("expected a line");
+        let input: Input = parse_input(input_buf);
 
-        stdin().read_line(&mut input).expect("expected a line");
-        let mut words = input.split_whitespace();
-
-        match words.next() {
-            // match the first word of the input
-            None => {}
-            Some("exit") => {
-                return;
-            }
-            Some(command) => {
-                let mut cmd = Command::new(command);
-                for word in words {
-                    // iterate over the arguments
-                    cmd.arg(word);
-                }
+        match input.builtin {
+            Builtins::None => {
+                let mut cmd = Command::new(input.command);
+                cmd.args(input.args);
                 match cmd.spawn() {
-                    // spawn the processed command
                     Ok(mut child) => {
-                        match child.wait() {
-                            Ok(_) => {}
-                            Err(e) => println!("{:#?}", e),
+                        if !input.bg {
+                            match child.wait() {
+                                Ok(_) => {}
+                                Err(e) => println!("{:#?}", e),
+                            }
                         }
                         match child.stdout.take() {
                             None => {}
@@ -43,6 +86,10 @@ fn main() {
                     Err(e) => println!("{:#?}", e),
                 }
             }
+            Builtins::Exit => return,
+            Builtins::Echo => println! {"{:#?}", input.args.join(" ")},
+            Builtins::Alias => {}
+            Builtins::CD => {}
         }
     }
 }
