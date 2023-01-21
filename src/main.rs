@@ -73,7 +73,7 @@ fn main() {
 
         match input.builtin {
             Builtins::None => {
-                let mut cmd = Command::new(input.command);
+                let mut cmd = Command::new(&input.command);
                 cmd.args(input.args);
                 match cmd.spawn() {
                     Ok(mut child) => {
@@ -89,7 +89,7 @@ fn main() {
                         }
                     }
                     // if spawning failed, print message
-                    Err(e) => println!("{:#?}", e),
+                    Err(_) => println! {"{}: command not found", input.command},
                 }
             }
             Builtins::Exit => return,
