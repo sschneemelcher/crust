@@ -1,7 +1,7 @@
 use std::env::{current_dir, set_current_dir, var};
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{exit, Command, ExitCode};
 
 struct Input {
     command: String,
@@ -16,6 +16,21 @@ enum Builtins {
     CD,
     Echo,
     Alias,
+}
+
+fn main() {
+    loop {
+        print_prompt();
+
+        let mut input_buf = String::new();
+        stdin().read_line(&mut input_buf).expect("expected a line");
+        let input: Input = parse_input(input_buf);
+
+        match input.builtin {
+            Builtins::None => execute_command(input),
+            _ => execute_builtin(input),
+        }
+    }
 }
 
 fn print_prompt() {
@@ -66,49 +81,44 @@ fn parse_input(line: String) -> Input {
     return parsed_input;
 }
 
-fn main() {
-    loop {
-        print_prompt();
+fn execute_command(input: Input) {
+    let mut cmd = Command::new(&input.command);
+    cmd.args(&input.args);
 
-        let mut input_buf = String::new();
-        stdin().read_line(&mut input_buf).expect("expected a line");
-        let input: Input = parse_input(input_buf);
-
-        match input.builtin {
-            Builtins::None => {
-                let mut cmd = Command::new(&input.command);
-                cmd.args(input.args);
-                match cmd.spawn() {
-                    Ok(mut child) => {
-                        if !input.bg {
-                            match child.wait() {
-                                Ok(_) => {}
-                                Err(e) => println!("{:#?}", e),
-                            }
-                        }
-                        match child.stdout.take() {
-                            None => {}
-                            Some(output) => println!("{:#?}", output),
-                        }
-                    }
-                    // if spawning failed, print message
-                    Err(_) => println! {"{}: command not found", input.command},
+    match cmd.spawn() {
+        Ok(mut child) => {
+            if !input.bg {
+                match child.wait() {
+                    Ok(_) => {}
+                    Err(e) => println!("{:#?}", e),
                 }
             }
-            Builtins::Exit => return,
-            Builtins::Echo => println! {"{:#?}", input.args.join(" ")},
-            Builtins::Alias => {}
-            Builtins::CD => match current_dir() {
-                // Ok(path) => match set_current_dir(path.extend(input.args)) {
-                Ok(mut path) => {
-                    <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
-                    match set_current_dir(path) {
-                        Ok(_) => {}
-                        Err(_) => {}
-                    }
-                }
-                Err(e) => println! {"{:#?}", e},
-            },
+            match child.stdout.take() {
+                None => {}
+                Some(output) => println!("{:#?}", output),
+            }
         }
+        // if spawning failed, print message
+        Err(_) => println! {"{}: command not found", input.command},
+    }
+}
+
+fn execute_builtin(input: Input) {
+    match input.builtin {
+        Builtins::Exit => exit(0),
+        Builtins::Echo => println! {"{:#?}", input.args.join(" ")},
+        Builtins::Alias => {}
+        Builtins::CD => match current_dir() {
+            // Ok(path) => match set_current_dir(path.extend(input.args)) {
+            Ok(mut path) => {
+                <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
+                match set_current_dir(path) {
+                    Ok(_) => {}
+                    Err(_) => {}
+                }
+            }
+            Err(e) => println! {"{:#?}", e},
+        },
+        _ => {}
     }
 }
