@@ -1,7 +1,9 @@
-use std::env::{current_dir, set_current_dir, var};
+use std::env::{current_dir, home_dir, set_current_dir, var};
 use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
-use std::process::{exit, Command, ExitCode};
+use std::process::{exit, Command};
+
+const SHELL_NAME: &str = "crust";
 
 struct Input {
     command: String,
@@ -95,7 +97,7 @@ fn execute_command(input: Input) {
             }
             match child.stdout.take() {
                 None => {}
-                Some(output) => println!("{:#?}", output),
+                Some(output) => println!("{}", stringify!(output)),
             }
         }
         // if spawning failed, print message
@@ -106,15 +108,27 @@ fn execute_command(input: Input) {
 fn execute_builtin(input: Input) {
     match input.builtin {
         Builtins::Exit => exit(0),
-        Builtins::Echo => println! {"{:#?}", input.args.join(" ")},
-        Builtins::Alias => {}
+        Builtins::Echo => println! {"{}", input.args.join(" ")},
+        Builtins::Alias => { /* TODO use hash map to define aliases */ }
         Builtins::CD => match current_dir() {
-            // Ok(path) => match set_current_dir(path.extend(input.args)) {
             Ok(mut path) => {
-                <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
-                match set_current_dir(path) {
-                    Ok(_) => {}
-                    Err(_) => {}
+                // Check if the user has given 0 (~) or 1 arg
+                match input.args.len() {
+                    0 => match home_dir() {
+                        Some(home) => match set_current_dir(home) {
+                            Ok(_) => {}
+                            Err(_) => {}
+                        },
+                        None => println! {"{}: cd: home not set", SHELL_NAME},
+                    },
+                    1 => {
+                        <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
+                        match set_current_dir(path) {
+                            Ok(_) => {}
+                            Err(_) => {}
+                        }
+                    }
+                    _ => println! {"{}: cd: too many arguments", SHELL_NAME},
                 }
             }
             Err(e) => println! {"{:#?}", e},
