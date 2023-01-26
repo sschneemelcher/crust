@@ -69,6 +69,8 @@ fn parse_input(line: String) -> Input {
             return parsed_input;
         }
         Some("cd") => parsed_input.builtin = Builtins::CD,
+        Some("echo") => parsed_input.builtin = Builtins::Echo,
+        Some("alias") => parsed_input.builtin = Builtins::Alias,
         Some(command) => {
             parsed_input.command = command.to_string();
         }
@@ -97,7 +99,7 @@ fn execute_command(input: Input) {
             }
             match child.stdout.take() {
                 None => {}
-                Some(output) => println!("{}", stringify!(output)),
+                Some(output) => println!("{:?}", output),
             }
         }
         // if spawning failed, print message
@@ -110,29 +112,36 @@ fn execute_builtin(input: Input) {
         Builtins::Exit => exit(0),
         Builtins::Echo => println! {"{}", input.args.join(" ")},
         Builtins::Alias => { /* TODO use hash map to define aliases */ }
-        Builtins::CD => match current_dir() {
-            Ok(mut path) => {
-                // Check if the user has given 0 (~) or 1 arg
-                match input.args.len() {
-                    0 => match home_dir() {
-                        Some(home) => match set_current_dir(home) {
-                            Ok(_) => {}
-                            Err(_) => {}
-                        },
-                        None => println! {"{}: cd: home not set", SHELL_NAME},
+        Builtins::CD => change_dir(input),
+        _ => {}
+    }
+}
+
+fn change_dir(input: Input) {
+    match current_dir() {
+        Ok(mut path) => {
+            // Check if the user has given 0 (~) or 1 arg
+            match input.args.len() {
+                0 => match home_dir() {
+                    Some(home) => match set_current_dir(home) {
+                        Ok(_) => {}
+                        Err(_) => {}
                     },
-                    1 => {
-                        <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
-                        match set_current_dir(path) {
-                            Ok(_) => {}
-                            Err(_) => {}
+                    None => println! {"-{}: cd: home not set", SHELL_NAME},
+                },
+                1 => {
+                    let arg: &str = &input.args[0].clone();
+                    <PathBuf as Extend<String>>::extend::<Vec<String>>(&mut path, input.args);
+                    match set_current_dir(path) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            println! {"-{}: cd: {}: No such file or directory", SHELL_NAME, arg}
                         }
                     }
-                    _ => println! {"{}: cd: too many arguments", SHELL_NAME},
                 }
+                _ => println! {"-{}: cd: too many arguments", SHELL_NAME},
             }
-            Err(e) => println! {"{:#?}", e},
-        },
-        _ => {}
+        }
+        Err(e) => println! {"{:#?}", e},
     }
 }
