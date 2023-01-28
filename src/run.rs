@@ -52,10 +52,8 @@ fn change_dir(input: &Input) {
                 },
                 1 => {
                     let arg: &str = &input.args[0].clone();
-                    <PathBuf as Extend<String>>::extend::<Vec<String>>(
-                        &mut path,
-                        input.args.clone(),
-                    );
+                    let extension = PathBuf::from(input.args[0].clone());
+                    path.push(extension);
                     match set_current_dir(path) {
                         Ok(_) => {}
                         Err(_) => {
