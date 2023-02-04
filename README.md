@@ -16,7 +16,7 @@ Ready to feel the heat? Let's get started!
 git clone https://github.com/sschneemelcher/crust.git
 cd crust
 cargo build --release
-target/crust
+target/release/crust
 
 ```
 
