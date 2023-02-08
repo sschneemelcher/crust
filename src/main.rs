@@ -1,6 +1,7 @@
 use std::env::var;
 use std::io::{stdin, stdout, Write};
 
+mod errors;
 mod parse;
 mod run;
 

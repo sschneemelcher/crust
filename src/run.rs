@@ -4,7 +4,10 @@ use std::{
     process::{exit, Command},
 };
 
-use crate::{Builtins, Input, SHELL_NAME};
+use crate::{
+    errors::{get_error_message, Errors},
+    Builtins, Input, SHELL_NAME,
+};
 
 pub fn execute_command(input: &Input) {
     let mut cmd = Command::new(&input.command);
@@ -24,7 +27,7 @@ pub fn execute_command(input: &Input) {
             }
         }
         // if spawning failed, print message
-        Err(_) => println! {"{}: command not found", input.command},
+        Err(_) => println! {"{}: {}", input.command, get_error_message(Errors::CommandNotFound)},
     }
 }
 
