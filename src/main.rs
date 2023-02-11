@@ -1,9 +1,11 @@
 use std::env::var;
 use std::io::{stdin, stdout, Write};
+use ui::handle_keys;
 
 mod errors;
 mod parse;
 mod run;
+mod ui;
 
 pub const SHELL_NAME: &str = "crust";
 
@@ -25,12 +27,17 @@ pub enum Builtins {
 }
 
 fn main() {
+    let mut stdout = stdout();
     loop {
         print_prompt();
 
-        let mut input_buf = String::new();
-        stdin().read_line(&mut input_buf).expect("expected a line");
-        let inputs: &Vec<Input> = &parse::parse_input(input_buf);
+        let raw_input = match handle_keys(&mut stdout) {
+            Ok(input) => input,
+            Err(_) => continue,
+        };
+        // let mut input_buf = String::new();
+        // stdin().read_line(&mut input_buf).expect("expected a line");
+        let inputs: &Vec<Input> = &parse::parse_input(raw_input);
         for input in inputs {
             match input.builtin {
                 Builtins::None => run::execute_command(input),
