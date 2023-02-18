@@ -33,13 +33,29 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                     } else if c == 'c' && event.modifiers == KeyModifiers::CONTROL {
                         input = "".to_string();
                         break;
-                    }
-                    match execute!(stdout, Print(c)) {
-                        Ok(()) => {
-                            input.push(c);
-                            position += 1;
+                    } else if position < input.len() {
+                        let line = input.clone();
+                        let (head, tail) = line.split_at(position);
+                        match execute!(
+                            stdout,
+                            Print(c),
+                            Print(&tail),
+                            MoveLeft(tail.len().try_into().unwrap())
+                        ) {
+                            Ok(()) => {
+                                input = format!("{}{}{}", head, c, tail);
+                                position += 1;
+                            }
+                            Err(_) => {}
                         }
-                        Err(_) => {}
+                    } else {
+                        match execute!(stdout, Print(c)) {
+                            Ok(()) => {
+                                input.push(c);
+                                position += 1;
+                            }
+                            Err(_) => {}
+                        }
                     }
                 }
                 KeyCode::Backspace => {
