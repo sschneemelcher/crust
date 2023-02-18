@@ -55,13 +55,20 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                             }
                         } else {
                             // delete character from inside the line
-                            execute!(
+                            let line = input.clone();
+                            let (head, tail) = line.split_at(position - 1);
+                            input = head.to_string() + &tail[1..];
+                            match execute!(
                                 stdout,
                                 MoveLeft(position.try_into().unwrap()),
                                 Clear(crossterm::terminal::ClearType::FromCursorDown),
-                                Print(input)
-                            )
-                            .ok();
+                                Print(&head),
+                                Print(&tail[1..]),
+                                MoveLeft((tail.len() - 1).try_into().unwrap())
+                            ) {
+                                Ok(()) => position -= 1,
+                                Err(_) => {}
+                            }
                         }
                     }
                 }
