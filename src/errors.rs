@@ -7,6 +7,7 @@ pub enum Errors {
     PermissionDenied,
     FileNotFound,
     InvalidArgument,
+    FileOpenError,
 }
 
 pub fn get_error_message(err: Errors) -> String {
@@ -23,6 +24,9 @@ pub fn get_error_message(err: Errors) -> String {
         Errors::FileNotFound => vec!["File not found 🙁, it's probably out there somewhere. Keep searching partner.",
                                      "Whoops! I couldn't find that file 🤨. Maybe it's hiding in the hills.",
                                      "File not found 🤔, did you check your trail?"],
+        Errors::FileOpenError => vec!["Looks like a snake in your boot! Couldn't access that file 🐍",
+                                      "Galloping ghosts! The file couldn't be opened 🐴",
+                                      "Well shucks, looks like we hit a snag opening that file 🤠"],
         
         Errors::InvalidArgument => vec!["Uh oh, that argument won't work 🤔. Time to try a different trail.",
                                         "invalid argument 🚫. You need to check your input, partner.",
