@@ -11,41 +11,24 @@ pub enum Errors {
 
 pub fn get_error_message(err: Errors) -> String {
     let mut rng = thread_rng();
+    let choices = match err {
+        Errors::CommandNotFound =>  vec!["Rodeo! Couldn't find that command 🤠.",
+                                         "Hold on partner, I don't recognize that command 🤔.",
+                                         "Whoopsie 🤯, it seems that command done got away."],
 
-    let message: &str = match err {
-        Errors::CommandNotFound => {
-            let n: u8 = rng.gen_range(0..3);
-            match n {
-                0 => "Rodeo! Couldn't find that command 🤠.",
-                1 => "Hold on partner, I don't recognize that command 🤔.",
-                _ => "Whoopsie 🤯, it seems that command done got away.",
-            }
-        }
-        Errors::PermissionDenied => {
-            let n: u8 = rng.gen_range(0..3);
-            match n {
-                0 => "Permission denied 🚫. Looks like you're not the sheriff around here.",
-                1 => "You don't have the necessary permissions to do that. Time to call in the big guns (sudo) 💪.",
-                _ => "Uh oh, permission denied 🚨. You might need to ask for help from the root sheriff.",
-            }
-        }
-        Errors::FileNotFound => {
-            let n: u8 = rng.gen_range(0..3);
-            match n {
-                0 => "File not found 🙁, it's probably out there somewhere. Keep searching partner.",
-                1 => "Whoops! I couldn't find that file 🤨. Maybe it's hiding in the hills.",
-                _ => "File not found 🤔, did you check your trail?",
-            }
-        }
-        Errors::InvalidArgument => {
-            let n: u8 = rng.gen_range(0..3);
-            match n {
-                0 => "Uh oh, that argument won't work 🤔. Time to try a different trail.",
-                1 => "invalid argument 🚫. You need to check your input, partner.",
-                _ => "Oops! That argument is invalid 🤨. Try a different one.",
-            }
-        }
+        Errors::PermissionDenied =>  vec!["Permission denied 🚫. Looks like you're not the sheriff around here.",
+                                          "You don't have the necessary permissions to do that. Time to call in the big guns (sudo) 💪.",
+                                          "Uh oh, permission denied 🚨. You might need to ask for help from the root sheriff."],
+
+        Errors::FileNotFound => vec!["File not found 🙁, it's probably out there somewhere. Keep searching partner.",
+                                     "Whoops! I couldn't find that file 🤨. Maybe it's hiding in the hills.",
+                                     "File not found 🤔, did you check your trail?"],
+        
+        Errors::InvalidArgument => vec!["Uh oh, that argument won't work 🤔. Time to try a different trail.",
+                                        "invalid argument 🚫. You need to check your input, partner.",
+                                        "Oops! That argument is invalid 🤨. Try a different one."]
     };
+    let n: usize = rng.gen_range(0..choices.len());
 
-    return message.to_string();
+    return choices[n].to_string();
 }
