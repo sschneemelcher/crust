@@ -9,12 +9,14 @@ pub fn parse_input(raw_input: String) -> Vec<Input> {
             continue;
         };
 
-        let mut parsed_input = Input {
-            command: "".to_string(),
-            args: vec![],
-            builtin: Builtins::None,
-            bg: false,
-        };
+        // prepare
+        let mut parsed_input: Input = Default::default();
+        //  Input {
+        //     command: "".to_string(),
+        //     args: vec![],
+        //     builtin: Builtins::None,
+        //     bg: false,
+        // };
 
         if &line[(line.len() - 1)..] == "&" {
             parsed_input.bg = true;

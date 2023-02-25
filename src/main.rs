@@ -1,19 +1,20 @@
 use clap::Parser;
 use errors::{get_error_message, Errors};
-use std::env::var;
 use std::fs;
-use std::io::{stdout, Write};
+use std::io::stdout;
 use std::path::PathBuf;
+use std::process::exit;
 use ui::handle_keys;
 
 mod errors;
 mod parse;
+mod prompt;
 mod run;
 mod ui;
 
 pub const SHELL_NAME: &str = "crust";
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Input {
     command: String,
     args: Vec<String>,
@@ -21,8 +22,9 @@ pub struct Input {
     builtin: Builtins,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum Builtins {
+    #[default]
     None,
     Exit,
     CD,
@@ -69,20 +71,21 @@ fn main() {
                 }
             }
             Err(_) => {
-                println!("{}", get_error_message(Errors::FileOpenError));
+                println!("{}", get_error_message(Errors::FileNotFound));
+                exit(1);
             }
         }
+        exit(0);
     }
 
     loop {
-        print_prompt();
+        prompt::print_prompt();
 
         let raw_input = match handle_keys(&mut stdout) {
             Ok(input) => input,
             Err(_) => continue,
         };
-        // let mut input_buf = String::new();
-        // stdin().read_line(&mut input_buf).expect("expected a line");
+
         let inputs: &Vec<Input> = &parse::parse_input(raw_input);
         for input in inputs {
             match input.builtin {
@@ -90,20 +93,5 @@ fn main() {
                 _ => run::execute_builtin(input),
             }
         }
-    }
-}
-
-fn print_prompt() {
-    let prompt = match var("PS2") {
-        Ok(val) => val,
-        Err(_) => "$ ".to_string(),
-    };
-
-    let mut lock = stdout().lock();
-    write!(lock, "{}", prompt).unwrap();
-
-    match lock.flush() {
-        Ok(_) => {}
-        Err(e) => println!("{:#?}", e),
     }
 }
