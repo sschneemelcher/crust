@@ -105,6 +105,16 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                     }
                 }
                 KeyCode::Enter => break,
+                KeyCode::Tab => {
+                    let completion = get_completion(&input);
+                    match execute!(stdout, Print(completion.clone())) {
+                        Ok(()) => {
+                            input.push_str(completion.as_ref());
+                            position += completion.len();
+                        }
+                        Err(_) => {}
+                    }
+                }
                 _ => {}
             },
             _ => {}
@@ -113,4 +123,8 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
     exit_raw_mode();
     execute!(stdout, Print('\n')).ok();
     Ok(input)
+}
+
+fn get_completion(_line: &str) -> String {
+    return "".to_string();
 }
