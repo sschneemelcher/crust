@@ -9,15 +9,9 @@ pub fn parse_input(raw_input: String) -> Vec<Input> {
             continue;
         };
 
-        // prepare
         let mut parsed_input: Input = Default::default();
-        //  Input {
-        //     command: "".to_string(),
-        //     args: vec![],
-        //     builtin: Builtins::None,
-        //     bg: false,
-        // };
 
+        // handle running command in background
         if &line[(line.len() - 1)..] == "&" {
             parsed_input.bg = true;
             line = &line[..(line.len() - 1)]
@@ -72,4 +66,28 @@ fn test_bg() {
     assert_eq!(input.args, ["-a", "-l"]);
     assert_eq!(input.bg, true);
     assert_eq!(input.builtin, Builtins::None);
+}
+
+#[test]
+fn test_chaining() {
+    let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; echo Hello World".to_string());
+    assert_eq!(inputs.len(), 3);
+
+    let mut input: &Input = &inputs[0];
+    assert_eq!(input.command, "ls");
+    assert_eq!(input.args, ["-a", "-l"]);
+    assert_eq!(input.bg, false);
+    assert_eq!(input.builtin, Builtins::None);
+
+    input = &inputs[1];
+    assert_eq!(input.command, "cat");
+    assert_eq!(input.args, ["README.md"]);
+    assert_eq!(input.bg, false);
+    assert_eq!(input.builtin, Builtins::None);
+
+    input = &inputs[2];
+    assert_eq!(input.command, "");
+    assert_eq!(input.args, ["Hello", "World"]);
+    assert_eq!(input.bg, false);
+    assert_eq!(input.builtin, Builtins::Echo);
 }
