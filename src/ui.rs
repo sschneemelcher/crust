@@ -8,6 +8,7 @@ use crossterm::{
 };
 use std::{
     convert::TryInto,
+    env::var,
     fs,
     io::{stdout, Stdout, Write},
     process::exit,
@@ -115,12 +116,20 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                     let completions = get_completion(&input);
 
                     if completions.len() > 1 {
-                        queue!(stdout, Print("\n"), SavePosition, MoveToColumn(0))?;
+                        queue!(
+                            stdout,
+                            SavePosition,
+                            MoveToColumn(0),
+                            Clear(crossterm::terminal::ClearType::FromCursorDown)
+                        )?;
+
                         for completion in completions {
                             queue!(stdout, Print(completion + "    "))?;
                         }
-                        queue!(stdout, RestorePosition, MoveUp(1))?;
-                        stdout.flush()?;
+
+                        execute!(stdout, Print("\n"), MoveToColumn(0))?;
+                        print_prompt();
+                        execute!(stdout, Print(input.clone()), RestorePosition)?;
                     } else if completions.len() == 1 {
                         match execute!(stdout, Print(completions[0].clone())) {
                             Ok(()) => {
@@ -130,14 +139,6 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                             Err(_) => {}
                         }
                     }
-
-                    // match execute!(stdout, Print(completion.clone())) {
-                    //     Ok(()) => {
-                    //         input.push_str(completion.as_ref());
-                    //         position += completion.len();
-                    //     }
-                    //     Err(_) => {}
-                    // }
                 }
                 _ => {}
             },
@@ -161,4 +162,19 @@ fn get_completion(_line: &str) -> Vec<String> {
         Err(_) => {}
     }
     return completions;
+}
+
+pub fn print_prompt() {
+    let prompt = match var("PS2") {
+        Ok(val) => val,
+        Err(_) => "$ ".to_string(),
+    };
+
+    let mut lock = stdout().lock();
+    write!(lock, "{}", prompt).unwrap();
+
+    match lock.flush() {
+        Ok(_) => {}
+        Err(e) => println!("{:#?}", e),
+    }
 }

@@ -8,7 +8,6 @@ use ui::handle_keys;
 
 mod errors;
 mod parse;
-mod prompt;
 mod run;
 mod ui;
 
@@ -79,7 +78,7 @@ fn main() {
     }
 
     loop {
-        prompt::print_prompt();
+        ui::print_prompt();
 
         let raw_input = match handle_keys(&mut stdout) {
             Ok(input) => input,
