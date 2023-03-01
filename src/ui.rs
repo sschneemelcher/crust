@@ -30,10 +30,9 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
         Err(_) => panic! {"unable to enter raw mode"},
     }
     let mut mode = Mode::Shell;
-    // execute!(stdout, MoveToColumn(0), )
 
     loop {
-        print_prompt(stdout, &mode, &input);
+        print_prompt(stdout, &mode, &input, &position);
 
         // `read()` blocks until an `Event` is available
         match read()? {
@@ -43,79 +42,48 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                         exit_raw_mode();
                         exit(0);
                     } else if c == 'c' && event.modifiers == KeyModifiers::CONTROL {
-                        input = "".to_string();
-                        break;
+                        match mode {
+                            Mode::Shell => {
+                                input = "".to_string();
+                                break;
+                            }
+                            Mode::Ask => mode = Mode::Shell,
+                        }
                     } else if c == 'a' && event.modifiers == KeyModifiers::CONTROL {
                         mode = Mode::Ask;
                     } else if position < input.len() {
                         let line = input.clone();
                         let (head, tail) = line.split_at(position);
-                        match execute!(
-                            stdout,
-                            Print(c),
-                            Print(&tail),
-                            MoveLeft(tail.len().try_into().unwrap())
-                        ) {
-                            Ok(()) => {
-                                input = format!("{}{}{}", head, c, tail);
-                                position += 1;
-                            }
-                            Err(_) => {}
-                        }
+                        input = format!("{}{}{}", head, c, tail);
+                        position += 1;
                     } else {
-                        match execute!(stdout, Print(c)) {
-                            Ok(()) => {
-                                input.push(c);
-                                position += 1;
-                            }
-                            Err(_) => {}
-                        }
+                        input.push(c);
+                        position += 1;
                     }
                 }
                 KeyCode::Backspace => {
                     if input.len() > 0 && position > 0 {
                         if input.len() == position {
                             // delete character at end of line
-                            match execute!(stdout, MoveLeft(1), Print(' '), MoveLeft(1)) {
-                                Ok(()) => {
-                                    input.pop();
-                                    position -= 1;
-                                }
-                                Err(_) => {}
-                            }
+                            input.pop();
+                            position -= 1;
                         } else {
                             // delete character from inside the line
                             let line = input.clone();
                             let (head, tail) = line.split_at(position - 1);
                             input = head.to_string() + &tail[1..];
-                            match execute!(
-                                stdout,
-                                MoveLeft(position.try_into().unwrap()),
-                                Clear(crossterm::terminal::ClearType::FromCursorDown),
-                                Print(&head),
-                                Print(&tail[1..]),
-                                MoveLeft((tail.len() - 1).try_into().unwrap())
-                            ) {
-                                Ok(()) => position -= 1,
-                                Err(_) => {}
-                            }
+                            position -= 1;
                         }
                     }
                 }
                 KeyCode::Left => {
                     if position > 0 {
-                        position = match execute!(stdout, MoveLeft(1)) {
-                            Ok(()) => position - 1,
-                            Err(_) => position,
-                        };
+                        position = position - 1;
                     }
                 }
                 KeyCode::Right => {
                     if position < input.len() {
-                        position = match execute!(stdout, MoveRight(1)) {
-                            Ok(()) => position + 1,
-                            Err(_) => position,
-                        };
+                        position = position + 1;
                     }
                 }
                 KeyCode::Enter => break,
@@ -136,7 +104,7 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                         }
 
                         execute!(stdout, Print("\n"), MoveToColumn(0))?;
-                        print_prompt(stdout, &mode, &input);
+                        print_prompt(stdout, &mode, &input, &position);
                         execute!(stdout, Print(input.clone()), RestorePosition)?;
                     } else if completions.len() == 1 {
                         match execute!(stdout, Print(completions[0].clone())) {
@@ -172,7 +140,7 @@ fn get_completion(_line: &str) -> Vec<String> {
     return completions;
 }
 
-pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str) {
+pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str, position: &usize) {
     let prompt = match mode {
         Mode::Shell => match var("PS2") {
             Ok(val) => val,
@@ -181,17 +149,12 @@ pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str) {
         Mode::Ask => "[ask-crust]: ".to_string(),
     };
 
-    queue!(
+    execute!(
         stdout,
-        SavePosition,
         MoveToColumn(0),
-        Clear(crossterm::terminal::ClearType::FromCursorDown)
+        Clear(crossterm::terminal::ClearType::FromCursorDown),
+        Print(prompt.clone() + input),
+        MoveToColumn((prompt.len() + position).try_into().unwrap())
     )
     .ok();
-
-    if input.len() == 0 {
-        execute!(stdout, Print(prompt)).ok();
-    } else {
-        execute!(stdout, Print(prompt + input), RestorePosition).ok();
-    }
 }
