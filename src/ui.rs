@@ -1,12 +1,17 @@
 use crossterm::{
-    cursor::{MoveLeft, MoveRight},
+    cursor::{MoveDown, MoveLeft, MoveRight, MoveToColumn, MoveUp, RestorePosition, SavePosition},
     event::{read, Event, KeyCode, KeyModifiers},
-    execute,
+    execute, queue,
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear},
     Result,
 };
-use std::{convert::TryInto, io::Stdout, process::exit};
+use std::{
+    convert::TryInto,
+    fs,
+    io::{stdout, Stdout, Write},
+    process::exit,
+};
 
 fn exit_raw_mode() {
     match disable_raw_mode() {
@@ -106,14 +111,33 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                 }
                 KeyCode::Enter => break,
                 KeyCode::Tab => {
-                    let completion = get_completion(&input);
-                    match execute!(stdout, Print(completion.clone())) {
-                        Ok(()) => {
-                            input.push_str(completion.as_ref());
-                            position += completion.len();
+                    // Handle completions
+                    let completions = get_completion(&input);
+
+                    if completions.len() > 1 {
+                        queue!(stdout, Print("\n"), SavePosition, MoveToColumn(0))?;
+                        for completion in completions {
+                            queue!(stdout, Print(completion + "    "))?;
                         }
-                        Err(_) => {}
+                        queue!(stdout, RestorePosition, MoveUp(1))?;
+                        stdout.flush()?;
+                    } else if completions.len() == 1 {
+                        match execute!(stdout, Print(completions[0].clone())) {
+                            Ok(()) => {
+                                input.push_str(completions[0].as_ref());
+                                position += completions[0].len();
+                            }
+                            Err(_) => {}
+                        }
                     }
+
+                    // match execute!(stdout, Print(completion.clone())) {
+                    //     Ok(()) => {
+                    //         input.push_str(completion.as_ref());
+                    //         position += completion.len();
+                    //     }
+                    //     Err(_) => {}
+                    // }
                 }
                 _ => {}
             },
@@ -125,6 +149,16 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
     Ok(input)
 }
 
-fn get_completion(_line: &str) -> String {
-    return "".to_string();
+fn get_completion(_line: &str) -> Vec<String> {
+    let mut completions: Vec<String> = vec![];
+
+    match fs::read_dir(".") {
+        Ok(paths) => {
+            for path in paths {
+                completions.push(path.unwrap().path().display().to_string());
+            }
+        }
+        Err(_) => {}
+    }
+    return completions;
 }
