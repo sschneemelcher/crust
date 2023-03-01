@@ -78,8 +78,6 @@ fn main() {
     }
 
     loop {
-        ui::print_prompt();
-
         let raw_input = match handle_keys(&mut stdout) {
             Ok(input) => input,
             Err(_) => continue,

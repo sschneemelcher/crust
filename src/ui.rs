@@ -1,18 +1,12 @@
 use crossterm::{
-    cursor::{MoveDown, MoveLeft, MoveRight, MoveToColumn, MoveUp, RestorePosition, SavePosition},
+    cursor::{MoveLeft, MoveRight, MoveToColumn, RestorePosition, SavePosition},
     event::{read, Event, KeyCode, KeyModifiers},
     execute, queue,
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear},
     Result,
 };
-use std::{
-    convert::TryInto,
-    env::var,
-    fs,
-    io::{stdout, Stdout, Write},
-    process::exit,
-};
+use std::{convert::TryInto, env::var, fs, io::Stdout, process::exit};
 
 fn exit_raw_mode() {
     match disable_raw_mode() {
@@ -21,14 +15,26 @@ fn exit_raw_mode() {
     };
 }
 
+#[derive(Clone)]
+pub enum Mode {
+    Shell,
+    Ask,
+}
+
 pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
     let mut position = 0;
     let mut input: String = "".to_string();
+
     match enable_raw_mode() {
         Ok(()) => {}
         Err(_) => panic! {"unable to enter raw mode"},
     }
+    let mut mode = Mode::Shell;
+    // execute!(stdout, MoveToColumn(0), )
+
     loop {
+        print_prompt(stdout, &mode, &input);
+
         // `read()` blocks until an `Event` is available
         match read()? {
             Event::Key(event) => match event.code {
@@ -39,6 +45,8 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                     } else if c == 'c' && event.modifiers == KeyModifiers::CONTROL {
                         input = "".to_string();
                         break;
+                    } else if c == 'a' && event.modifiers == KeyModifiers::CONTROL {
+                        mode = Mode::Ask;
                     } else if position < input.len() {
                         let line = input.clone();
                         let (head, tail) = line.split_at(position);
@@ -128,7 +136,7 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                         }
 
                         execute!(stdout, Print("\n"), MoveToColumn(0))?;
-                        print_prompt();
+                        print_prompt(stdout, &mode, &input);
                         execute!(stdout, Print(input.clone()), RestorePosition)?;
                     } else if completions.len() == 1 {
                         match execute!(stdout, Print(completions[0].clone())) {
@@ -164,17 +172,26 @@ fn get_completion(_line: &str) -> Vec<String> {
     return completions;
 }
 
-pub fn print_prompt() {
-    let prompt = match var("PS2") {
-        Ok(val) => val,
-        Err(_) => "$ ".to_string(),
+pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str) {
+    let prompt = match mode {
+        Mode::Shell => match var("PS2") {
+            Ok(val) => val,
+            Err(_) => "$ ".to_string(),
+        },
+        Mode::Ask => "[ask-crust]: ".to_string(),
     };
 
-    let mut lock = stdout().lock();
-    write!(lock, "{}", prompt).unwrap();
+    queue!(
+        stdout,
+        SavePosition,
+        MoveToColumn(0),
+        Clear(crossterm::terminal::ClearType::FromCursorDown)
+    )
+    .ok();
 
-    match lock.flush() {
-        Ok(_) => {}
-        Err(e) => println!("{:#?}", e),
+    if input.len() == 0 {
+        execute!(stdout, Print(prompt)).ok();
+    } else {
+        execute!(stdout, Print(prompt + input), RestorePosition).ok();
     }
 }
