@@ -8,3 +8,5 @@ edition = "2018"
 rand = "0.8.5"
 crossterm = "0.26.0"
 clap = { version = "4.1.6", features = ["derive"] }
+tokio = { version = "1.26.0", features = ["macros", "rt-multi-thread"] }
+async-openai = "0.8.0"

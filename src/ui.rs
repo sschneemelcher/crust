@@ -1,12 +1,12 @@
+use async_openai::{types::CreateCompletionRequestArgs, Client};
 use crossterm::{
-    cursor::{MoveLeft, MoveRight, MoveToColumn, RestorePosition, SavePosition},
+    cursor::{MoveToColumn, RestorePosition, SavePosition},
     event::{read, Event, KeyCode, KeyModifiers},
     execute, queue,
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear},
-    Result,
 };
-use std::{convert::TryInto, env::var, fs, io::Stdout, process::exit};
+use std::{convert::TryInto, env::var, error::Error, fs, io::Stdout, process::exit};
 
 fn exit_raw_mode() {
     match disable_raw_mode() {
@@ -21,7 +21,7 @@ pub enum Mode {
     Ask,
 }
 
-pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
+pub async fn handle_keys(stdout: &mut Stdout) -> Result<String, Box<dyn Error>> {
     let mut position = 0;
     let mut input: String = "".to_string();
 
@@ -86,7 +86,17 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
                         position = position + 1;
                     }
                 }
-                KeyCode::Enter => break,
+                KeyCode::Enter => match mode {
+                    Mode::Shell => break,
+                    Mode::Ask => match get_openai_completion(&input).await {
+                        Ok(completion) => {
+                            input = completion.clone();
+                            position = input.len();
+                            mode = Mode::Shell;
+                        }
+                        Err(_) => {}
+                    },
+                },
                 KeyCode::Tab => {
                     // Handle completions
                     let completions = get_completion(&input);
@@ -157,4 +167,24 @@ pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str, position: &us
         MoveToColumn((prompt.len() + position).try_into().unwrap())
     )
     .ok();
+}
+
+async fn get_openai_completion(input: &str) -> Result<String, Box<dyn Error>> {
+    let client = Client::new();
+    let request = CreateCompletionRequestArgs::default()
+            .model("text-davinci-003")
+            .prompt(format!{"Provide a command line snippet for achieving the following task. Only answer with the code, nothing more.
+Task: {}?
+Snippet: `", input})
+            .max_tokens(40_u16)
+            .build()?;
+
+    let response = client.completions().create(request).await?;
+
+    if response.choices.len() == 1 {
+        let choice = response.choices[0].text.clone();
+        return Ok(choice[..choice.len() - 1].to_string());
+    }
+
+    Ok("".to_string())
 }

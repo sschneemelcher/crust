@@ -4,7 +4,6 @@ use std::fs;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
-use ui::handle_keys;
 
 mod errors;
 mod parse;
@@ -42,7 +41,8 @@ struct Cli {
     debug: u8,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     let mut stdout = stdout();
 
@@ -78,7 +78,7 @@ fn main() {
     }
 
     loop {
-        let raw_input = match handle_keys(&mut stdout) {
+        let raw_input = match ui::handle_keys(&mut stdout).await {
             Ok(input) => input,
             Err(_) => continue,
         };
