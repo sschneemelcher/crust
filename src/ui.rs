@@ -1,12 +1,13 @@
 use async_openai::{types::CreateCompletionRequestArgs, Client};
 use crossterm::{
-    cursor::{MoveToColumn, RestorePosition, SavePosition},
+    cursor::MoveToColumn,
     event::{read, Event, KeyCode, KeyModifiers},
-    execute, queue,
+    execute,
     style::Print,
     terminal::{disable_raw_mode, enable_raw_mode, Clear},
 };
-use std::{convert::TryInto, env::var, error::Error, fs, io::Stdout, process::exit};
+use std::{convert::TryInto, env::var, error::Error, fs, io::stdout, process::exit};
+use tokio::sync::mpsc::{Receiver, Sender};
 
 fn exit_raw_mode() {
     match disable_raw_mode() {
@@ -15,158 +16,193 @@ fn exit_raw_mode() {
     };
 }
 
-#[derive(Clone)]
-pub enum Mode {
-    Shell,
-    Ask,
+#[derive(Debug, Default, Clone)]
+pub struct Prompt {
+    input: String,
+    position: usize,
+    mode: Mode,
 }
 
-pub async fn handle_keys(stdout: &mut Stdout) -> Result<String, Box<dyn Error>> {
-    let mut position = 0;
-    let mut input: String = "".to_string();
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Mode {
+    #[default]
+    Shell,
+    Ask,
+    Enter,
+    Break,
+    Exit,
+}
+
+pub async fn handle_keys(prompt_tx: Sender<Prompt>) -> Result<String, Box<dyn Error>> {
+    let mut prompt = Prompt::default();
+
+    prompt_tx.send(Prompt::default()).await.ok();
 
     match enable_raw_mode() {
         Ok(()) => {}
         Err(_) => panic! {"unable to enter raw mode"},
     }
-    let mut mode = Mode::Shell;
 
     loop {
-        print_prompt(stdout, &mode, &input, &position);
-
         // `read()` blocks until an `Event` is available
         match read()? {
             Event::Key(event) => match event.code {
                 KeyCode::Char(c) => {
                     if c == 'd' && event.modifiers == KeyModifiers::CONTROL {
-                        exit_raw_mode();
-                        exit(0);
+                        prompt.mode = Mode::Exit;
                     } else if c == 'c' && event.modifiers == KeyModifiers::CONTROL {
-                        match mode {
-                            Mode::Shell => {
-                                input = "".to_string();
-                                break;
+                        match prompt.mode {
+                            Mode::Ask => prompt.mode = Mode::Shell,
+                            _ => {
+                                prompt.mode = Mode::Break;
                             }
-                            Mode::Ask => mode = Mode::Shell,
                         }
                     } else if c == 'a' && event.modifiers == KeyModifiers::CONTROL {
-                        mode = Mode::Ask;
-                    } else if position < input.len() {
-                        let line = input.clone();
-                        let (head, tail) = line.split_at(position);
-                        input = format!("{}{}{}", head, c, tail);
-                        position += 1;
+                        prompt.mode = Mode::Ask;
+                    } else if prompt.position < prompt.input.len() {
+                        let line = prompt.input.clone();
+                        let (head, tail) = line.split_at(prompt.position);
+                        prompt.input = format!("{}{}{}", head, c, tail);
+                        prompt.position += 1;
                     } else {
-                        input.push(c);
-                        position += 1;
+                        prompt.input.push(c);
+                        prompt.position += 1;
                     }
                 }
                 KeyCode::Backspace => {
-                    if input.len() > 0 && position > 0 {
-                        if input.len() == position {
+                    if prompt.input.len() > 0 && prompt.position > 0 {
+                        if prompt.input.len() == prompt.position {
                             // delete character at end of line
-                            input.pop();
-                            position -= 1;
+                            prompt.input.pop();
+                            prompt.position -= 1;
                         } else {
                             // delete character from inside the line
-                            let line = input.clone();
-                            let (head, tail) = line.split_at(position - 1);
-                            input = head.to_string() + &tail[1..];
-                            position -= 1;
+                            let line = prompt.input.clone();
+                            let (head, tail) = line.split_at(prompt.position - 1);
+                            prompt.input = head.to_string() + &tail[1..];
+                            prompt.position -= 1;
                         }
                     }
                 }
                 KeyCode::Left => {
-                    if position > 0 {
-                        position = position - 1;
+                    if prompt.position > 0 {
+                        prompt.position = prompt.position - 1;
                     }
                 }
                 KeyCode::Right => {
-                    if position < input.len() {
-                        position = position + 1;
+                    if prompt.position < prompt.input.len() {
+                        prompt.position = prompt.position + 1;
                     }
                 }
-                KeyCode::Enter => match mode {
-                    Mode::Shell => break,
-                    Mode::Ask => match get_openai_completion(&input).await {
+                KeyCode::Enter => match prompt.mode {
+                    Mode::Ask => match get_openai_completion(&prompt.input).await {
                         Ok(completion) => {
-                            input = completion.clone();
-                            position = input.len();
-                            mode = Mode::Shell;
+                            prompt.input = completion.clone();
+                            prompt.position = prompt.input.len();
+                            prompt.mode = Mode::Shell;
                         }
                         Err(_) => {}
                     },
-                },
-                KeyCode::Tab => {
-                    // Handle completions
-                    let completions = get_completion(&input);
 
-                    if completions.len() > 1 {
-                        queue!(
-                            stdout,
-                            SavePosition,
-                            MoveToColumn(0),
-                            Clear(crossterm::terminal::ClearType::FromCursorDown)
-                        )?;
-
-                        for completion in completions {
-                            queue!(stdout, Print(completion + "    "))?;
-                        }
-
-                        execute!(stdout, Print("\n"), MoveToColumn(0))?;
-                        print_prompt(stdout, &mode, &input, &position);
-                        execute!(stdout, Print(input.clone()), RestorePosition)?;
-                    } else if completions.len() == 1 {
-                        match execute!(stdout, Print(completions[0].clone())) {
-                            Ok(()) => {
-                                input.push_str(completions[0].as_ref());
-                                position += completions[0].len();
-                            }
-                            Err(_) => {}
-                        }
+                    _ => {
+                        prompt.input.push('\n');
+                        prompt.mode = Mode::Enter;
                     }
-                }
+                },
+                // KeyCode::Tab => {
+                //     // Handle completions
+                //     let completions = get_completion(&prompt.input);
+
+                //     if completions.len() > 1 {
+                //         queue!(
+                //             stdout,
+                //             Saveprompt.position,
+                //             MoveToColumn(0),
+                //             Clear(crossterm::terminal::ClearType::FromCursorDown)
+                //         )?;
+
+                //         for completion in completions {
+                //             queue!(stdout, Print(completion + "    "))?;
+                //         }
+
+                //         execute!(stdout, Print("\n"), MoveToColumn(0))?;
+                //         // print_prompt(stdout, &mode, &prompt.input, &prompt.position);
+                //         execute!(stdout, Print(prompt.input.clone()), Restoreprompt.position)?;
+                //     } else if completions.len() == 1 {
+                //         match execute!(stdout, Print(completions[0].clone())) {
+                //             Ok(()) => {
+                //                 prompt.input.push_str(completions[0].as_ref());
+                //                 prompt.position += completions[0].len();
+                //             }
+                //             Err(_) => {}
+                //         }
+                //     }
+                // }
                 _ => {}
             },
             _ => {}
         };
-    }
-    exit_raw_mode();
-    execute!(stdout, Print('\n')).ok();
-    Ok(input)
-}
 
-fn get_completion(_line: &str) -> Vec<String> {
-    let mut completions: Vec<String> = vec![];
+        prompt_tx.send(prompt.clone()).await.ok();
 
-    match fs::read_dir(".") {
-        Ok(paths) => {
-            for path in paths {
-                completions.push(path.unwrap().path().display().to_string());
+        match prompt.mode {
+            Mode::Exit => {
+                exit_raw_mode();
+                exit(0);
             }
+            Mode::Enter => {
+                exit_raw_mode();
+                return Ok(prompt.input);
+            }
+            Mode::Break => {
+                prompt = Prompt::default();
+                prompt_tx.send(prompt.clone()).await.ok();
+            }
+            _ => {}
         }
-        Err(_) => {}
     }
-    return completions;
 }
 
-pub fn print_prompt(stdout: &mut Stdout, mode: &Mode, input: &str, position: &usize) {
-    let prompt = match mode {
-        Mode::Shell => match var("PS2") {
-            Ok(val) => val,
-            Err(_) => "$ ".to_string(),
-        },
-        Mode::Ask => "[ask-crust]: ".to_string(),
-    };
+// fn get_completion(_line: &str) -> Vec<String> {
+//     let mut completions: Vec<String> = vec![];
 
-    execute!(
-        stdout,
-        MoveToColumn(0),
-        Clear(crossterm::terminal::ClearType::FromCursorDown),
-        Print(prompt.clone() + input),
-        MoveToColumn((prompt.len() + position).try_into().unwrap())
-    )
-    .ok();
+//     match fs::read_dir(".") {
+//         Ok(paths) => {
+//             for path in paths {
+//                 completions.push(path.unwrap().path().display().to_string());
+//             }
+//         }
+//         Err(_) => {}
+//     }
+//     return completions;
+// }
+
+pub async fn print_prompt(mut rx: Receiver<Prompt>) {
+    let mut stdout = stdout();
+    while let Some(prompt) = rx.recv().await {
+        let ps2 = match prompt.mode {
+            Mode::Ask => "[ask-crust]: ".to_string(),
+            _ => match var("PS2") {
+                Ok(val) => val,
+                Err(_) => "$ ".to_string(),
+            },
+        };
+
+        execute!(
+            stdout,
+            MoveToColumn(0),
+            Clear(crossterm::terminal::ClearType::FromCursorDown),
+            Print(format! {"{}{}", ps2.clone(), prompt.input}),
+            MoveToColumn((ps2.len() + prompt.position).try_into().unwrap())
+        )
+        .ok();
+
+        if prompt.mode == Mode::Enter {
+            execute!(stdout, MoveToColumn(0),).ok();
+        } else if prompt.mode == Mode::Break {
+            execute!(stdout, Print("^C\n")).ok();
+        }
+    }
 }
 
 async fn get_openai_completion(input: &str) -> Result<String, Box<dyn Error>> {

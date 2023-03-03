@@ -4,6 +4,7 @@ use std::fs;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
+use tokio::sync::mpsc;
 
 mod errors;
 mod parse;
@@ -44,8 +45,6 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let mut stdout = stdout();
-
     match cli.debug {
         0 => {}
         _ => println!("Debug mode is on"),
@@ -77,8 +76,12 @@ async fn main() {
         exit(0);
     }
 
+    let (prompt_tx, prompt_rx) = mpsc::channel(32);
+
+    tokio::spawn(async move { ui::print_prompt(prompt_rx).await });
+
     loop {
-        let raw_input = match ui::handle_keys(&mut stdout).await {
+        let raw_input = match ui::handle_keys(prompt_tx.clone()).await {
             Ok(input) => input,
             Err(_) => continue,
         };
