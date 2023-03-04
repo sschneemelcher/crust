@@ -1,4 +1,9 @@
-use crossterm::{cursor::MoveToColumn, execute, queue, style::Print, terminal::Clear};
+use crossterm::{
+    cursor::MoveToColumn,
+    execute, queue,
+    style::Print,
+    terminal::{Clear, ClearType},
+};
 use std::{
     convert::TryInto,
     env::var,
@@ -23,6 +28,7 @@ pub async fn print_prompt(mut rx: Receiver<Prompt>) {
     let mut stdout = stdout();
 
     while let Some(msg) = rx.recv().await {
+        println!("{:?}", msg);
         let ps2 = handle_ps2(&msg.mode);
 
         match msg.mode {
@@ -37,19 +43,15 @@ pub async fn print_prompt(mut rx: Receiver<Prompt>) {
         }
 
         // move to start of line and print prompt
-        queue!(
-            stdout,
-            MoveToColumn(0),
-            Clear(crossterm::terminal::ClearType::FromCursorDown),
-            Print(ps2.clone()),
-        )
-        .ok();
+        queue!(stdout, MoveToColumn(0), Print(ps2.clone()),).ok();
 
         if msg.mode != PromptMode::Break {
             print_input(&msg, &ps2.len());
         }
 
-        stdout.flush().ok();
+        execute!(stdout, Clear(ClearType::FromCursorDown)).ok();
+
+        // stdout.flush().ok();
     }
 }
 
