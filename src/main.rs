@@ -1,12 +1,11 @@
 use clap::Parser;
 use errors::{get_error_message, Errors};
-use std::fs;
-use std::io::stdout;
-use std::path::PathBuf;
-use std::process::exit;
+use std::{fs, path::PathBuf, process::exit};
 use tokio::sync::mpsc;
+use ui::PromptMode;
 
 mod errors;
+mod keys;
 mod parse;
 mod run;
 mod ui;
@@ -19,6 +18,13 @@ pub struct Input {
     args: Vec<String>,
     bg: bool,
     builtin: Builtins,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Prompt {
+    input: String,
+    position: usize,
+    mode: PromptMode,
 }
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -81,7 +87,7 @@ async fn main() {
     tokio::spawn(async move { ui::print_prompt(prompt_rx).await });
 
     loop {
-        let raw_input = match ui::handle_keys(prompt_tx.clone()).await {
+        let raw_input = match keys::handle_keys(prompt_tx.clone()).await {
             Ok(input) => input,
             Err(_) => continue,
         };
