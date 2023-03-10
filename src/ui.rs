@@ -14,8 +14,12 @@ use crate::{Mode, Prompt};
 
 pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
     match prompt.mode {
-        Mode::Submit => queue!(stdout, Print('\n')).ok().unwrap(),
-        Mode::Break => queue!(stdout, Print("^C\n")).ok().unwrap(),
+        Mode::Submit => {
+            queue!(stdout, Print('\n')).ok().unwrap();
+        }
+        Mode::Break => {
+            queue!(stdout, Print("^C\n")).ok().unwrap();
+        }
         _ => {}
     }
 
@@ -35,11 +39,14 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
 
     queue!(stdout, Print(&ps2)).ok();
 
-    if prompt.mode == Mode::Input {
-        queue!(stdout, Print(&prompt.input)).ok();
-    }
+    let pos: u16 = match prompt.mode {
+        Mode::Input => {
+            queue!(stdout, Print(&prompt.input)).ok();
 
-    let pos: u16 = (ps2.len() + prompt.position).try_into().unwrap();
+            (ps2.len() + prompt.position).try_into().unwrap()
+        }
+        _ => ps2.len().try_into().unwrap(),
+    };
     execute!(stdout, MoveToColumn(pos)).ok();
 }
 
