@@ -1,12 +1,13 @@
 use clap::Parser;
 use errors::{get_error_message, Errors};
+use keys::handle_keys;
 use std::fs;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
-use ui::handle_keys;
 
 mod errors;
+mod keys;
 mod parse;
 mod run;
 mod ui;
@@ -29,6 +30,23 @@ pub enum Builtins {
     CD,
     Echo,
     Alias,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Mode {
+    #[default]
+    Input,
+    Submit,
+    Break,
+    Exit,
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct Prompt {
+    position: usize,
+    input: String,
+    mode: Mode,
+    completions: Vec<String>,
 }
 
 #[derive(Parser)]
