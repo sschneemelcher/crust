@@ -1,5 +1,5 @@
 use crossterm::{
-    cursor::MoveToColumn,
+    cursor::{MoveToColumn, RestorePosition, SavePosition},
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     execute, queue,
     style::Print,
@@ -66,18 +66,19 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
             }
         }
         KeyCode::Backspace => {
-            if prompt.input.len() > 0 && prompt.position > 0 {
-                if prompt.input.len() == prompt.position {
-                    // delete character at end of line
-                    prompt.input.pop();
-                    prompt.position -= 1;
-                } else {
-                    // delete character from inside the line
-                    let line = prompt.input.clone();
-                    let (head, tail) = line.split_at(prompt.position - 1);
-                    prompt.input = head.to_string() + &tail[1..];
-                    prompt.position -= 1;
-                }
+            if prompt.input.len() == 0 || prompt.position == 0 {
+                return;
+            }
+            if prompt.input.len() == prompt.position {
+                // delete character at end of line
+                prompt.input.pop();
+                prompt.position -= 1;
+            } else {
+                // delete character from inside the line
+                let line = prompt.input.clone();
+                let (head, tail) = line.split_at(prompt.position - 1);
+                prompt.input = head.to_string() + &tail[1..];
+                prompt.position -= 1;
             }
         }
         KeyCode::Left => {
@@ -117,6 +118,7 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
         }
 
         print_prompt(stdout, &prompt);
+        prompt.completions = vec![];
 
         match prompt.mode {
             Mode::Exit => {
@@ -156,6 +158,16 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         _ => {}
     }
 
+    if prompt.completions.len() > 1 {
+        queue!(stdout, SavePosition, MoveToColumn(0), Clear(FromCursorDown)).ok();
+
+        for completion in prompt.completions.clone() {
+            queue!(stdout, Print(completion + "    ")).ok();
+        }
+
+        queue!(stdout, Print("\n")).ok();
+    }
+
     queue!(stdout, MoveToColumn(0), Clear(FromCursorDown)).ok();
 
     if prompt.mode == Mode::Submit {
@@ -176,29 +188,4 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
 
     let pos: u16 = (ps2.len() + prompt.position).try_into().unwrap();
     execute!(stdout, MoveToColumn(pos)).ok();
-
-    // if completions.len() > 1 {
-    //     queue!(
-    //         stdout,
-    //         SavePosition,
-    //         MoveToColumn(0),
-    //         Clear(crossterm::terminal::ClearType::FromCursorDown)
-    //     )?;
-
-    //     for completion in completions {
-    //         queue!(stdout, Print(completion + "    "))?;
-    //     }
-
-    //     execute!(stdout, Print("\n"), MoveToColumn(0))?;
-    //     print_prompt(stdout, &mode, &input, &position);
-    //     execute!(stdout, Print(input.clone()), RestorePosition)?;
-    // } else if completions.len() == 1 {
-    //     match execute!(stdout, Print(completions[0].clone())) {
-    //         Ok(()) => {
-    //             input.push_str(completions[0].as_ref());
-    //             position += completions[0].len();
-    //         }
-    //         Err(_) => {}
-    //     }
-    // }
 }
