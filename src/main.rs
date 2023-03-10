@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use clap::Parser;
 use errors::{get_error_message, Errors};
 use keys::handle_keys;
+use proptest::proptest;
 use std::fs;
 use std::io::stdout;
 use std::path::PathBuf;
@@ -127,10 +128,20 @@ fn main() {
 }
 
 #[test]
-fn test_crust_echo() {
+fn test_crust_echo_simple() {
     let mut cmd = Command::cargo_bin("crust").unwrap();
     let output = cmd.arg("-c").arg("echo Hello World").output().unwrap();
     assert!(output.status.success());
 
     assert_eq!(output.stdout, b"Hello World\n");
+}
+
+#[test]
+fn test_crust_echo() {
+    proptest!(|(arg in "\\PC*")| {
+        let mut cmd = Command::cargo_bin("crust").unwrap();
+        let output = cmd.arg("-c").arg(format!("echo {}", &arg)).output().unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, format!("{}\n", arg).as_bytes());
+    });
 }
