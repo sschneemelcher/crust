@@ -1,3 +1,4 @@
+use assert_cmd::Command;
 use clap::Parser;
 use errors::{get_error_message, Errors};
 use keys::handle_keys;
@@ -55,6 +56,10 @@ struct Cli {
     /// Optional file to run
     input_file: Option<PathBuf>,
 
+    /// runs the given command string directly
+    #[arg(short, long)]
+    command: Option<String>,
+
     /// Turn debugging information on
     #[arg(short, long, action = clap::ArgAction::Count)]
     debug: u8,
@@ -69,27 +74,37 @@ fn main() {
         _ => println!("Debug mode is on"),
     }
 
+    let mut input = String::default();
+
+    if let Some(command) = cli.command.as_deref() {
+        input = command.to_string();
+    }
+
     if let Some(path) = cli.input_file.as_deref() {
         if cli.debug > 0 {
             println!("operating on file {}", path.display());
         }
         let file_contents = fs::read_to_string(path);
-        match file_contents {
+        input = match file_contents {
             Ok(content) => {
                 if cli.debug > 1 {
                     println!("{content}");
                 }
-                let inputs: &Vec<Input> = &parse::parse_input(content);
-                for input in inputs {
-                    match input.builtin {
-                        Builtins::None => run::execute_command(input),
-                        _ => run::execute_builtin(input),
-                    }
-                }
+                content
             }
             Err(_) => {
                 println!("{}", get_error_message(Errors::FileNotFound));
                 exit(1);
+            }
+        };
+    }
+
+    if input.len() > 0 {
+        let inputs: &Vec<Input> = &parse::parse_input(input);
+        for input in inputs {
+            match input.builtin {
+                Builtins::None => run::execute_command(input),
+                _ => run::execute_builtin(input),
             }
         }
         exit(0);
@@ -109,4 +124,13 @@ fn main() {
             }
         }
     }
+}
+
+#[test]
+fn test_crust_echo() {
+    let mut cmd = Command::cargo_bin("crust").unwrap();
+    let output = cmd.arg("-c").arg("echo Hello World").output().unwrap();
+    assert!(output.status.success());
+
+    assert_eq!(output.stdout, b"Hello World\n");
 }
