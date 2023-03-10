@@ -30,7 +30,7 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
 
     let ps2 = match var("PS2") {
         Ok(val) => val,
-        Err(_) => "$ ".to_string(),
+        Err(_) => "$ ".to_owned(),
     };
 
     queue!(stdout, Print(&ps2)).ok();

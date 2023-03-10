@@ -53,7 +53,7 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
                 // delete character from inside the line
                 let line = &prompt.input;
                 let (head, tail) = line.split_at(prompt.position - 1);
-                prompt.input = head.to_string() + &tail[1..];
+                prompt.input = head.to_owned() + &tail[1..];
                 prompt.position -= 1;
             }
         }
@@ -93,11 +93,13 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
             _ => {}
         }
 
+        if prompt.completions.len() == 1 {
+            prompt.input.push_str(&prompt.completions[0]);
+            prompt.position += &prompt.completions[0].len();
+        }
+
         ui::print_prompt(stdout, &prompt);
 
-        if prompt.completions.len() == 1 {
-            prompt.input.push_str(&prompt.completions[0])
-        }
         prompt.completions = vec![];
 
         match prompt.mode {
@@ -117,16 +119,35 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
     }
 }
 
-fn get_completion(_line: &str) -> Vec<String> {
+fn get_completion(line: &str) -> Vec<String> {
     let mut completions: Vec<String> = vec![];
+
+    let last_cmd = match line.split_whitespace().last() {
+        Some(cmd) => cmd,
+        None => "",
+    };
 
     match fs::read_dir(".") {
         Ok(paths) => {
             for path in paths {
-                completions.push(path.unwrap().path().display().to_string());
+                let file_name = match path.unwrap().file_name().into_string() {
+                    Ok(name) => name,
+                    Err(_err) => "".to_owned(),
+                };
+                if file_name.starts_with(last_cmd) {
+                    completions.push(file_name);
+                }
             }
         }
         Err(_) => {}
     }
+
+    if completions.len() == 1 {
+        completions[0] = match completions[0].strip_prefix(last_cmd) {
+            Some(completion) => completion.to_owned(),
+            None => completions[0].to_owned(),
+        };
+    }
+
     return completions;
 }

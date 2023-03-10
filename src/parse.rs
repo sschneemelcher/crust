@@ -31,14 +31,14 @@ pub fn parse_input(raw_input: String) -> Vec<Input> {
             Some("echo") => parsed_input.builtin = Builtins::Echo,
             Some("alias") => parsed_input.builtin = Builtins::Alias,
             Some(command) => {
-                parsed_input.command = command.to_string();
+                parsed_input.command = command.to_owned();
             }
         }
 
         for word in words {
             match word {
                 "&" => parsed_input.bg = true,
-                arg => parsed_input.args.push(arg.to_string()),
+                arg => parsed_input.args.push(arg.to_owned()),
             }
         }
         inputs.push(parsed_input);
@@ -48,7 +48,7 @@ pub fn parse_input(raw_input: String) -> Vec<Input> {
 
 #[test]
 fn test_ls() {
-    let inputs: Vec<Input> = parse_input("ls -a -l".to_string());
+    let inputs: Vec<Input> = parse_input("ls -a -l".to_owned());
     assert_eq!(inputs.len(), 1);
     let input: &Input = &inputs[0];
     assert_eq!(input.command, "ls");
@@ -59,7 +59,7 @@ fn test_ls() {
 
 #[test]
 fn test_bg() {
-    let inputs: Vec<Input> = parse_input("ls -a -l&".to_string());
+    let inputs: Vec<Input> = parse_input("ls -a -l&".to_owned());
     assert_eq!(inputs.len(), 1);
     let input: &Input = &inputs[0];
     assert_eq!(input.command, "ls");
@@ -70,7 +70,7 @@ fn test_bg() {
 
 #[test]
 fn test_chaining() {
-    let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; echo Hello World".to_string());
+    let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; echo Hello World".to_owned());
     assert_eq!(inputs.len(), 3);
 
     let mut input: &Input = &inputs[0];

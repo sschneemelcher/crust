@@ -33,5 +33,5 @@ pub fn get_error_message(err: Errors) -> String {
     };
     let n: usize = rng.gen_range(0..choices.len());
 
-    return choices[n].to_string();
+    return choices[n].to_owned();
 }

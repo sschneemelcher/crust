@@ -78,7 +78,7 @@ fn main() {
     let mut input = String::default();
 
     if let Some(command) = cli.command.as_deref() {
-        input = command.to_string();
+        input = command.to_owned();
     }
 
     if let Some(path) = cli.input_file.as_deref() {
