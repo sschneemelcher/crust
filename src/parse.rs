@@ -9,70 +9,44 @@ struct ShellParser;
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
 
-    let parse_result = ShellParser::parse(Rule::command, &raw_input);
+    let parse_result = ShellParser::parse(Rule::command_list, &raw_input);
 
-    match parse_result {
-        Ok(mut result) => {
-            let command = result.next().unwrap();
-            let command_parts = command
-                .into_inner()
-                .map(|pair| pair.as_str())
-                .collect::<Vec<_>>();
-            inputs.push(Input {
-                command: command_parts[0].to_owned(),
-                args: command_parts[1..]
-                    .iter()
-                    .map(|str| str.to_string())
-                    .collect(),
-                bg: false,
-                builtin: Builtins::None,
-            });
-            inputs
-        }
-        Err(_e) => vec![],
+    let lines;
+    if let Ok(res) = parse_result {
+        lines = res;
+    } else {
+        return inputs;
     }
 
-    // Parse input line by line
-    // for mut line in raw_input.split(['\n', ';']) {
-    //     if line.len() < 1 {
-    //         continue;
-    //     };
+    for command in lines {
+        let command_parts = command
+            .into_inner()
+            .map(|pair| pair.as_str())
+            .collect::<Vec<_>>();
+        if command_parts.len() == 0 {
+            continue;
+        }
 
-    //     let mut parsed_input: Input = Default::default();
+        let mut input = Input {
+            command: command_parts[0].to_owned(),
+            args: command_parts[1..]
+                .iter()
+                .map(|str| str.to_string())
+                .collect(),
+            // TODO
+            bg: false,
+            builtin: Builtins::None,
+        };
 
-    //     // handle running command in background
-    //     if &line[(line.len() - 1)..] == "&" {
-    //         parsed_input.bg = true;
-    //         line = &line[..(line.len() - 1)]
-    //     }
+        match input.command.as_ref() {
+            "exit" => input.builtin = Builtins::Exit,
+            _ => {}
+        }
 
-    //     let mut words = line.split_whitespace();
+        inputs.push(input);
+    }
 
-    //     // parse the first word of the input
-    //     match words.next() {
-    //         // match the first word of the input
-    //         None => inputs.push(parsed_input.clone()),
-    //         Some("exit") => {
-    //             parsed_input.builtin = Builtins::Exit;
-    //             inputs.push(parsed_input.clone());
-    //         }
-    //         Some("cd") => parsed_input.builtin = Builtins::CD,
-    //         Some("echo") => parsed_input.builtin = Builtins::Echo,
-    //         Some("alias") => parsed_input.builtin = Builtins::Alias,
-    //         Some(command) => {
-    //             parsed_input.command = command.to_owned();
-    //         }
-    //     }
-
-    //     for word in words {
-    //         match word {
-    //             "&" => parsed_input.bg = true,
-    //             arg => parsed_input.args.push(arg.to_owned()),
-    //         }
-    //     }
-    //     inputs.push(parsed_input);
-    // }
-    // return inputs;
+    return inputs;
 }
 
 #[test]
