@@ -1,13 +1,13 @@
+use crate::cli::Cli;
 use assert_cmd::Command;
 use clap::Parser;
-use errors::{get_error_message, Errors};
 use keys::handle_keys;
 use proptest::proptest;
-use std::fs;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
 
+mod cli;
 mod errors;
 mod keys;
 mod parse;
@@ -51,53 +51,13 @@ pub struct Prompt {
     completions: Vec<String>,
 }
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    /// Optional file to run
-    input_file: Option<PathBuf>,
-
-    /// runs the given command string directly
-    #[arg(short, long)]
-    command: Option<String>,
-
-    /// Turn debugging information on
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
-}
-
 fn main() {
     let cli = Cli::parse();
     let mut stdout = stdout();
 
-    match cli.debug {
-        0 => {}
-        _ => println!("Debug mode is on"),
-    }
-
-    let mut input = String::default();
-
-    if let Some(command) = cli.command.as_deref() {
-        input = command.to_owned();
-    }
-
-    if let Some(path) = cli.input_file.as_deref() {
-        if cli.debug > 0 {
-            println!("operating on file {}", path.display());
-        }
-        let file_contents = fs::read_to_string(path);
-        input = match file_contents {
-            Ok(content) => {
-                if cli.debug > 1 {
-                    println!("{content}");
-                }
-                content
-            }
-            Err(_) => {
-                println!("{}", get_error_message(Errors::FileNotFound));
-                exit(1);
-            }
-        };
+    let (input, code) = cli::handle_args(cli);
+    if code != 0 {
+        exit(code);
     }
 
     if input.len() > 0 {
