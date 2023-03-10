@@ -8,6 +8,9 @@ use std::{
     convert::TryInto,
     env::var,
     io::{stdout, Write},
+    sync::Arc,
+    thread,
+    time::Duration,
 };
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -27,8 +30,12 @@ pub enum PromptMode {
 pub async fn print_prompt(mut rx: Receiver<Prompt>) {
     let mut stdout = stdout();
 
+    let finished = tokio::sync::Mutex::new(false);
+    let finished = Arc::new(finished);
+    let thread_arc = finished.clone();
+
     while let Some(msg) = rx.recv().await {
-        println!("{:?}", msg);
+        // println!("{:?}", msg);
         let ps2 = handle_ps2(&msg.mode);
 
         match msg.mode {
@@ -38,6 +45,46 @@ pub async fn print_prompt(mut rx: Receiver<Prompt>) {
             }
             PromptMode::Break => {
                 queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap();
+            }
+            PromptMode::WaitingForAskCrust => {
+                let t1 = thread_arc.clone();
+                tokio::spawn(async move {
+                    let mut stdout = std::io::stdout();
+                    loop {
+                        let x = t1.lock();
+
+                        if *x.await {
+                            break;
+                        } else {
+                            execute!(
+                                stdout,
+                                MoveToColumn(0),
+                                Clear(ClearType::FromCursorDown),
+                                Print("[waiting.]"),
+                            )
+                            .ok();
+                            tokio::time::sleep(Duration::from_millis(1000)).await;
+                            execute!(
+                                stdout,
+                                MoveToColumn(0),
+                                Clear(ClearType::FromCursorDown),
+                                Print("[waiting..]"),
+                            )
+                            .ok();
+                            tokio::time::sleep(Duration::from_millis(1000)).await;
+                            execute!(
+                                stdout,
+                                MoveToColumn(0),
+                                Clear(ClearType::FromCursorDown),
+                                Print("[waiting...]"),
+                            )
+                            .ok();
+                            tokio::time::sleep(Duration::from_millis(1000)).await;
+                        }
+
+                        // simulate some long-running work
+                    }
+                });
             }
             _ => {}
         }
@@ -49,16 +96,19 @@ pub async fn print_prompt(mut rx: Receiver<Prompt>) {
             print_input(&msg, &ps2.len());
         }
 
-        execute!(stdout, Clear(ClearType::FromCursorDown)).ok();
+        if msg.mode != PromptMode::WaitingForAskCrust {
+            let x = finished.lock();
+            *x.await = true;
+        }
 
-        // stdout.flush().ok();
+        execute!(stdout, Clear(ClearType::FromCursorDown)).ok();
     }
 }
 
 fn handle_ps2(mode: &PromptMode) -> String {
     match mode {
         PromptMode::Ask => "[ask-crust] ".to_string(),
-        PromptMode::WaitingForAskCrust => "[waiting...] ".to_string(),
+        // PromptMode::WaitingForAskCrust => "[waiting...] ".to_string(),
         _ => match var("PS2") {
             Ok(val) => val,
             Err(_) => "$ ".to_string(),

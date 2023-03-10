@@ -3,13 +3,7 @@ use crossterm::{
     event::{read, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use std::{
-    error::Error,
-    process::exit,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
-};
+use std::{error::Error, process::exit};
 use tokio::sync::mpsc::Sender;
 
 use crate::ui::PromptMode;
@@ -80,33 +74,9 @@ async fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, prompt_tx: &Sen
         }
         KeyCode::Enter => match prompt.mode {
             PromptMode::Ask => {
-                let finished = tokio::sync::Mutex::new(false);
-                let finished = Arc::new(finished);
-                let thread_arc = finished.clone();
-                let mut p2 = prompt.clone();
-                let tx2 = prompt_tx.clone();
-                let t1 = tokio::spawn(async move {
-                    loop {
-                        let x = thread_arc.lock();
-
-                        if *x.await {
-                            break;
-                        } else {
-                            println! {"asdasd"};
-                            p2.mode = PromptMode::WaitingForAskCrust;
-                            tx2.send(p2.clone()).await.ok();
-                            thread::sleep(Duration::from_millis(20));
-                            p2.mode = PromptMode::Ask;
-                            tx2.send(p2.clone()).await.ok();
-                            thread::sleep(Duration::from_millis(20));
-                        }
-
-                        // simulate some long-running work
-                    }
-                });
-
                 // send waiting mode
-                // prompt.mode = PromptMode::WaitingForAskCrust;
+                prompt.mode = PromptMode::WaitingForAskCrust;
+                prompt_tx.send(prompt.clone()).await.ok();
 
                 match get_openai_completion(&prompt.input).await {
                     Ok(completion) => {
@@ -118,8 +88,6 @@ async fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, prompt_tx: &Sen
                         prompt.mode = PromptMode::Break;
                     }
                 }
-                let x = finished.lock();
-                *x.await = true;
             }
             _ => {
                 prompt.mode = PromptMode::Submit;
