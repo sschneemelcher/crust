@@ -19,15 +19,7 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         _ => {}
     }
 
-    if prompt.completions.len() > 1 {
-        queue!(stdout, SavePosition, MoveToColumn(0), Clear(FromCursorDown)).ok();
-
-        for completion in prompt.completions.clone() {
-            queue!(stdout, Print(completion + "    ")).ok();
-        }
-
-        queue!(stdout, Print("\n")).ok();
-    }
+    print_completions(stdout, &prompt.completions);
 
     queue!(stdout, MoveToColumn(0), Clear(FromCursorDown)).ok();
 
@@ -41,12 +33,24 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         Err(_) => "$ ".to_string(),
     };
 
-    queue!(stdout, Print(ps2.clone())).ok();
+    queue!(stdout, Print(&ps2)).ok();
 
     if prompt.mode == Mode::Input {
-        queue!(stdout, Print(prompt.input.clone())).ok();
+        queue!(stdout, Print(&prompt.input)).ok();
     }
 
     let pos: u16 = (ps2.len() + prompt.position).try_into().unwrap();
     execute!(stdout, MoveToColumn(pos)).ok();
+}
+
+fn print_completions(stdout: &mut Stdout, completions: &Vec<String>) {
+    if completions.len() > 1 {
+        queue!(stdout, SavePosition, MoveToColumn(0), Clear(FromCursorDown)).ok();
+
+        for completion in completions {
+            queue!(stdout, Print(format!("{}    ", completion))).ok();
+        }
+
+        queue!(stdout, Print("\n")).ok();
+    }
 }

@@ -32,7 +32,7 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
     match event.code {
         KeyCode::Char(c) => {
             if prompt.position < prompt.input.len() {
-                let line = prompt.input.clone();
+                let line = &prompt.input;
                 let (head, tail) = line.split_at(prompt.position);
                 prompt.input = format!("{}{}{}", head, c, tail);
                 prompt.position += 1;
@@ -51,7 +51,7 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
                 prompt.position -= 1;
             } else {
                 // delete character from inside the line
-                let line = prompt.input.clone();
+                let line = &prompt.input;
                 let (head, tail) = line.split_at(prompt.position - 1);
                 prompt.input = head.to_string() + &tail[1..];
                 prompt.position -= 1;
