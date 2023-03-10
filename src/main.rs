@@ -7,6 +7,10 @@ use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
 
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
+
 mod cli;
 mod errors;
 mod keys;
@@ -61,10 +65,10 @@ fn main() {
     }
 
     if input.len() > 0 {
-        let inputs: &Vec<Input> = &parse::parse_input(input);
+        let inputs: &Vec<Input> = &parse::parse_input(&input);
         for input in inputs {
             match input.builtin {
-                Builtins::None => run::execute_command(input),
+                Builtins::None => run::execute_command(&input),
                 _ => run::execute_builtin(input),
             }
         }
@@ -77,7 +81,7 @@ fn main() {
             Err(_) => continue,
         };
 
-        let inputs: &Vec<Input> = &parse::parse_input(raw_input);
+        let inputs: &Vec<Input> = &parse::parse_input(&raw_input);
         for input in inputs {
             match input.builtin {
                 Builtins::None => run::execute_command(input),
