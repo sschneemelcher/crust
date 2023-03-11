@@ -6,8 +6,18 @@ use std::{
 
 use crate::{
     errors::{get_error_message, Errors},
-    Builtins, Input, SHELL_NAME,
+    Input, SHELL_NAME,
 };
+
+#[derive(Clone, Debug, PartialEq, Default)]
+pub enum Builtins {
+    #[default]
+    None,
+    Exit,
+    CD,
+    Echo,
+    Alias,
+}
 
 pub fn execute_command(input: &Input) {
     let mut cmd = Command::new(&input.command);

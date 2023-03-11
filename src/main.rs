@@ -1,6 +1,8 @@
 use crate::cli::Cli;
 use clap::Parser;
 use keys::handle_keys;
+use parse::Input;
+use run::Builtins;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
@@ -17,41 +19,6 @@ mod run;
 mod ui;
 
 pub const SHELL_NAME: &str = "crust";
-
-#[derive(Clone, Default)]
-pub struct Input {
-    command: String,
-    args: Vec<String>,
-    bg: bool,
-    builtin: Builtins,
-}
-
-#[derive(Clone, Debug, PartialEq, Default)]
-pub enum Builtins {
-    #[default]
-    None,
-    Exit,
-    CD,
-    Echo,
-    Alias,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub enum Mode {
-    #[default]
-    Input,
-    Submit,
-    Break,
-    Exit,
-}
-
-#[derive(Clone, Default, Debug)]
-pub struct Prompt {
-    position: usize,
-    input: String,
-    mode: Mode,
-    completions: Vec<String>,
-}
 
 fn main() {
     let cli = Cli::parse();

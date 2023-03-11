@@ -10,7 +10,15 @@ use std::{
     io::{Stdout, Write},
 };
 
-use crate::{Mode, Prompt};
+use crate::keys::Mode;
+
+#[derive(Clone, Default, Debug)]
+pub struct Prompt {
+    pub position: usize,
+    pub input: String,
+    pub mode: Mode,
+    pub completions: Vec<String>,
+}
 
 pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
     match prompt.mode {

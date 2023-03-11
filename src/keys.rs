@@ -5,7 +5,16 @@ use crossterm::{
 };
 use std::{fs, io::Stdout, process::exit};
 
-use crate::{ui, Mode, Prompt};
+use crate::ui::{self, Prompt};
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Mode {
+    #[default]
+    Input,
+    Submit,
+    Break,
+    Exit,
+}
 
 fn exit_raw_mode() {
     match disable_raw_mode() {

@@ -1,10 +1,18 @@
-use crate::{Builtins, Input};
+use crate::Builtins;
 
 use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
 struct ShellParser;
+
+#[derive(Clone, Default)]
+pub struct Input {
+    pub command: String,
+    pub args: Vec<String>,
+    pub bg: bool,
+    pub builtin: Builtins,
+}
 
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
