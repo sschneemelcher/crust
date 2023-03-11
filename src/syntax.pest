@@ -1,5 +1,7 @@
-line_ending = _{ "\r\n" ~ WHITE_SPACE* | "\n" ~ WHITE_SPACE* | ";" ~ WHITE_SPACE* }
-command = { command_name ~ ( WHITE_SPACE* ~ argument)* ~ WHITE_SPACE* }
-argument = { (("\"" ~ (!"\"" ~ ANY)* ~ "\"") | (!" " ~ !line_ending ~ ANY)+) }
-command_name = { (!" " ~ !line_ending ~ ANY)+ }
-command_list = _{ SOI ~ (command ~ line_ending)* ~ command? ~ EOI }
+line_ending = { "\r\n" ~ WHITE_SPACE* | "\n" ~ WHITE_SPACE* | ";" ~ WHITE_SPACE* }
+bg_indicator = { "&" }
+end_command = _{ WHITE_SPACE* ~ ((bg_indicator ~ !line_ending) | (line_ending ~ !bg_indicator))? ~ WHITE_SPACE* }
+command = { command_name ~ ( WHITE_SPACE* ~ argument)* ~ end_command }
+argument = { (("\"" ~ (!"\"" ~ !bg_indicator ~ ANY)* ~ "\"") | (!" " ~ !line_ending ~ !"&" ~ ANY)+) }
+command_name = { (!" " ~ !line_ending ~ !bg_indicator ~ ANY)+ }
+command_list = _{ SOI ~ command* ~ EOI }

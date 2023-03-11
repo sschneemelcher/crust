@@ -20,25 +20,17 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let lines = ShellParser::parse(Rule::command_list, &raw_input)
         .unwrap_or_else(|e| panic!("command parsing failed: {}", e));
 
+    // println!("{:#?}", lines);
     for command in lines {
-        let command_parts = command
-            .into_inner()
-            .map(|pair| pair.as_str())
-            .collect::<Vec<_>>();
-        if command_parts.len() == 0 {
-            continue;
+        let mut input = Input::default();
+        for command_parts in command.to_owned().into_inner() {
+            match command_parts.as_rule() {
+                Rule::command_name => input.command = command_parts.as_str().to_owned(),
+                Rule::bg_indicator => input.bg = true,
+                Rule::argument => input.args.push(command_parts.as_str().to_owned()),
+                _ => {}
+            }
         }
-
-        let mut input = Input {
-            command: command_parts[0].to_owned(),
-            args: command_parts[1..]
-                .iter()
-                .map(|str| str.to_string())
-                .collect(),
-            // TODO
-            bg: false,
-            builtin: Builtins::None,
-        };
 
         match input.command.as_ref() {
             "exit" => input.builtin = Builtins::Exit,
@@ -47,7 +39,11 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
             _ => {}
         }
 
-        inputs.push(input);
+        if input.command.len() > 0 {
+            inputs.push(input.to_owned());
+        }
+
+        // inputs.push(input);
     }
 
     return inputs;
