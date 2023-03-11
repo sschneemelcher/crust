@@ -20,7 +20,6 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let lines = ShellParser::parse(Rule::command_list, &raw_input)
         .unwrap_or_else(|e| panic!("command parsing failed: {}", e));
 
-    // println!("{:#?}", lines);
     for command in lines {
         let mut input = Input::default();
         for command_parts in command.to_owned().into_inner() {
@@ -42,8 +41,6 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
         if input.command.len() > 0 {
             inputs.push(input.to_owned());
         }
-
-        // inputs.push(input);
     }
 
     return inputs;
