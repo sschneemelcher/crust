@@ -1,6 +1,5 @@
 use crate::cli::Cli;
 use clap::Parser;
-use cli::CLIReturnCode;
 use keys::handle_keys;
 use std::io::stdout;
 use std::path::PathBuf;
@@ -58,23 +57,17 @@ fn main() {
     let cli = Cli::parse();
     let mut stdout = stdout();
 
-    let (input, code) = cli::handle_args(cli);
+    let input = cli::handle_args(cli).unwrap();
 
-    match code {
-        CLIReturnCode::Success if input.len() > 0 => {
-            let inputs: &Vec<Input> = &parse::parse_input(&input);
-            for input in inputs {
-                match input.builtin {
-                    Builtins::None => run::execute_command(&input),
-                    _ => run::execute_builtin(input),
-                }
+    if input.len() > 0 {
+        let inputs: &Vec<Input> = &parse::parse_input(&input);
+        for input in inputs {
+            match input.builtin {
+                Builtins::None => run::execute_command(&input),
+                _ => run::execute_builtin(input),
             }
-            exit(0);
         }
-        CLIReturnCode::Success => exit(0),
-        CLIReturnCode::Error => exit(1),
-
-        _ => {}
+        exit(0);
     }
 
     loop {

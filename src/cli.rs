@@ -2,14 +2,7 @@ use clap::Parser;
 
 use crate::{errors, PathBuf};
 
-use std::fs;
-
-#[derive(PartialEq)]
-pub enum CLIReturnCode {
-    None,
-    Success,
-    Error,
-}
+use std::{fs, process::exit};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -26,14 +19,14 @@ pub struct Cli {
     debug: u8,
 }
 
-pub fn handle_args(cli: Cli) -> (String, CLIReturnCode) {
+pub fn handle_args(cli: Cli) -> Option<String> {
     match cli.debug {
         0 => {}
         _ => println!("Debug mode is on"),
     }
 
     if let Some(command) = cli.command.as_deref() {
-        return (command.to_owned(), CLIReturnCode::Success);
+        return Some(command.to_owned());
     }
 
     if let Some(path) = cli.input_file.as_deref() {
@@ -46,17 +39,17 @@ pub fn handle_args(cli: Cli) -> (String, CLIReturnCode) {
                 if cli.debug > 1 {
                     println!("{content}");
                 }
-                return (content.to_owned(), CLIReturnCode::Success);
+                return Some(content.to_owned());
             }
             Err(_) => {
                 println!(
                     "{}",
                     errors::get_error_message(errors::Errors::FileNotFound)
                 );
-                return ("".to_owned(), CLIReturnCode::Error);
+                exit(1);
             }
         };
     } else {
-        return ("".to_owned(), CLIReturnCode::None);
+        return Some("".to_owned());
     }
 }
