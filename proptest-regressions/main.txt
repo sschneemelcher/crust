@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc fcdb154ca6434cea6d1b82a452d0f948e8a2bff2496e5c132ab0bb46b8db6bb7 # shrinks to arg = "𑃰"
+cc 750bb7b2e5bf7d555b0151277794e4d2c5a7accc1185cd59abf29fb6096182fd # shrinks to arg = ""

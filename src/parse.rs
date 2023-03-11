@@ -9,14 +9,8 @@ struct ShellParser;
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
 
-    let parse_result = ShellParser::parse(Rule::command_list, &raw_input);
-
-    let lines;
-    if let Ok(res) = parse_result {
-        lines = res;
-    } else {
-        return inputs;
-    }
+    let lines = ShellParser::parse(Rule::command_list, &raw_input)
+        .unwrap_or_else(|e| panic!("command parsing failed: {}", e));
 
     for command in lines {
         let command_parts = command
@@ -40,6 +34,7 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
 
         match input.command.as_ref() {
             "exit" => input.builtin = Builtins::Exit,
+            "echo" => input.builtin = Builtins::Echo,
             _ => {}
         }
 
@@ -75,7 +70,6 @@ fn test_bg() {
 fn test_chaining() {
     let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; echo Hello World");
     assert_eq!(inputs.len(), 3);
-
     let mut input: &Input = &inputs[0];
     assert_eq!(input.command, "ls");
     assert_eq!(input.args, ["-a", "-l"]);
@@ -89,7 +83,7 @@ fn test_chaining() {
     assert_eq!(input.builtin, Builtins::None);
 
     input = &inputs[2];
-    assert_eq!(input.command, "");
+    assert_eq!(input.command, "echo");
     assert_eq!(input.args, ["Hello", "World"]);
     assert_eq!(input.bg, false);
     assert_eq!(input.builtin, Builtins::Echo);
