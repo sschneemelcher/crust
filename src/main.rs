@@ -60,13 +60,7 @@ fn main() {
     let input = cli::handle_args(cli).unwrap();
 
     if input.len() > 0 {
-        let inputs: &Vec<Input> = &parse::parse_input(&input);
-        for input in inputs {
-            match input.builtin {
-                Builtins::None => run::execute_command(&input),
-                _ => run::execute_builtin(input),
-            }
-        }
+        shell_cycle(&input);
         exit(0);
     }
 
@@ -75,13 +69,16 @@ fn main() {
             Ok(input) => input,
             Err(_) => continue,
         };
+        shell_cycle(&raw_input);
+    }
+}
 
-        let inputs: &Vec<Input> = &parse::parse_input(&raw_input);
-        for input in inputs {
-            match input.builtin {
-                Builtins::None => run::execute_command(input),
-                _ => run::execute_builtin(input),
-            }
+fn shell_cycle(raw_input: &str) {
+    let inputs: &Vec<Input> = &parse::parse_input(raw_input);
+    for input in inputs {
+        match input.builtin {
+            Builtins::None => run::execute_command(input),
+            _ => run::execute_builtin(input),
         }
     }
 }
