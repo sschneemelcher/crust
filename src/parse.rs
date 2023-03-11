@@ -69,7 +69,7 @@ fn test_bg() {
 
 #[test]
 fn test_chaining() {
-    let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; echo Hello World");
+    let inputs: Vec<Input> = parse_input("ls -a -l; cat README.md; cowsay Hello World");
     assert_eq!(inputs.len(), 3);
     let mut input: &Input = &inputs[0];
     assert_eq!(input.command, "ls");
@@ -84,8 +84,8 @@ fn test_chaining() {
     assert_eq!(input.builtin, Builtins::None);
 
     input = &inputs[2];
-    assert_eq!(input.command, "echo");
+    assert_eq!(input.command, "cowsay");
     assert_eq!(input.args, ["Hello", "World"]);
     assert_eq!(input.bg, false);
-    assert_eq!(input.builtin, Builtins::Echo);
+    assert_eq!(input.builtin, Builtins::None);
 }

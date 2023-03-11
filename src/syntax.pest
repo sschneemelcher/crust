@@ -1,5 +1,5 @@
 line_ending = _{ "\r\n" ~ WHITE_SPACE* | "\n" ~ WHITE_SPACE* | ";" ~ WHITE_SPACE* }
-command = { command_name ~ ( " " ~ argument)* }
+command = { command_name ~ ( WHITE_SPACE* ~ argument)* ~ WHITE_SPACE* }
 argument = { (("\"" ~ (!"\"" ~ ANY)* ~ "\"") | (!" " ~ !line_ending ~ ANY)+) }
 command_name = { (!" " ~ !line_ending ~ ANY)+ }
 command_list = _{ SOI ~ (command ~ line_ending)* ~ command? ~ EOI }

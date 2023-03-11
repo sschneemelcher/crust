@@ -71,9 +71,9 @@ fn main() {
             }
             exit(0);
         }
-        CLIReturnCode::Error => {
-            exit(1);
-        }
+        CLIReturnCode::Success => exit(0),
+        CLIReturnCode::Error => exit(1),
+
         _ => {}
     }
 
@@ -100,8 +100,8 @@ use proptest::proptest;
 fn test_crust_echo_simple() {
     let mut cmd = Command::cargo_bin("crust").unwrap();
     let output = cmd.arg("-c").arg("echo Hello World").output().unwrap();
-    assert!(output.status.success());
 
+    assert!(output.status.success());
     assert_eq!(output.stdout, b"Hello World\n");
 }
 
@@ -110,6 +110,9 @@ fn test_crust_echo() {
     proptest!(|(arg in "\\PC*")| {
         let mut cmd = Command::cargo_bin("crust").unwrap();
         let output = cmd.arg("-c").arg(format!("echo {}", &arg)).output().unwrap();
+        println!("{:#?}", &output);
+        println!("{:#?}\n", &arg);
+
         assert!(output.status.success());
         assert_eq!(output.stdout, format!("{}\n", arg).as_bytes());
     });
