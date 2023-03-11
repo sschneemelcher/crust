@@ -1,8 +1,7 @@
 use crate::cli::Cli;
-use assert_cmd::Command;
 use clap::Parser;
+use cli::CLIReturnCode;
 use keys::handle_keys;
-use proptest::proptest;
 use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
@@ -60,19 +59,22 @@ fn main() {
     let mut stdout = stdout();
 
     let (input, code) = cli::handle_args(cli);
-    if code != 0 {
-        exit(code);
-    }
 
-    if input.len() > 0 {
-        let inputs: &Vec<Input> = &parse::parse_input(&input);
-        for input in inputs {
-            match input.builtin {
-                Builtins::None => run::execute_command(&input),
-                _ => run::execute_builtin(input),
+    match code {
+        CLIReturnCode::Success if input.len() > 0 => {
+            let inputs: &Vec<Input> = &parse::parse_input(&input);
+            for input in inputs {
+                match input.builtin {
+                    Builtins::None => run::execute_command(&input),
+                    _ => run::execute_builtin(input),
+                }
             }
+            exit(0);
         }
-        exit(0);
+        CLIReturnCode::Error => {
+            exit(1);
+        }
+        _ => {}
     }
 
     loop {
@@ -90,6 +92,9 @@ fn main() {
         }
     }
 }
+
+use assert_cmd::Command;
+use proptest::proptest;
 
 #[test]
 fn test_crust_echo_simple() {

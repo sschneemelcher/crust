@@ -60,7 +60,7 @@ fn change_dir(input: &Input) {
                     match set_current_dir(path) {
                         Ok(_) => {}
                         Err(_) => {
-                            println! {"-{}: cd: {}: No such file or directory", SHELL_NAME, arg}
+                            println! {"-{}: cd: {}: {}", SHELL_NAME, arg, get_error_message(Errors::FileNotFound)}
                         }
                     }
                 }

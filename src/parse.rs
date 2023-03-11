@@ -35,6 +35,7 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
         match input.command.as_ref() {
             "exit" => input.builtin = Builtins::Exit,
             "echo" => input.builtin = Builtins::Echo,
+            "cd" => input.builtin = Builtins::CD,
             _ => {}
         }
 
