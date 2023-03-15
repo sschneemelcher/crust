@@ -1,7 +1,32 @@
-line_ending = { "\r\n" ~ WHITE_SPACE* | "\n" ~ WHITE_SPACE* | ";" ~ WHITE_SPACE* }
-bg_indicator = { "&" }
-end_command = _{ WHITE_SPACE* ~ ((bg_indicator ~ !line_ending) | (line_ending ~ !bg_indicator))? ~ WHITE_SPACE* }
-command = { command_name ~ ( WHITE_SPACE* ~ argument)* ~ end_command }
-argument = { (("\"" ~ (!"\"" ~ !bg_indicator ~ ANY)* ~ "\"") | (!" " ~ !line_ending ~ !"&" ~ ANY)+) }
-command_name = { (!" " ~ !line_ending ~ !bg_indicator ~ ANY)+ }
-command_list = _{ SOI ~ command* ~ EOI }
+// Helper rules
+// Line seperators
+line_sep = _{ "\n" | ";" }
+// Whitespace
+ws = _{ " " | "\t"}
+
+
+// Rule for a single command argument
+// This rule handles quoted arguments and escape characters
+arg = { quoted_string | unquoted_string }
+
+
+// Rule for a single unquoted command argument
+// This rule matches any sequence of characters that is not a space, semicolon, or quote
+unquoted_string = _{ (!("'" | "\"" | ws | line_sep) ~ ANY)+ }
+
+// Rule for the contents that are allowed in a quoted string
+quoted_string_content = { (!("'" | "\"" | ws | "\n") ~ ANY)+ }
+
+// Rule for a single quoted command argument
+// This rule matches a quoted string, allowing for escaped quotes
+quoted_string = { "'" ~ ("\\" ~ "'" | quoted_string_content | ws)+ ~ "'"
+			 	| "\"" ~ ("\\" ~ "\"" | quoted_string_content | ws)+ ~ "\"" }
+
+// Name of the command e.g. `echo` in `echo hello`
+command_name = { unquoted_string }
+
+// Define a rule for a single command, which consists of a command name followed by zero or more arguments
+command = _{ ws* ~ command_name ~ (ws+ ~ arg)* ~ ws* }
+
+// Define a rule for a multiple line, which consists of one or more commands separated by semicolons or newlines each
+lines = _{ (command ~ (line_sep+ | EOI))* }

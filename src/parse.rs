@@ -17,20 +17,31 @@ pub struct Input {
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
 
-    let lines = ShellParser::parse(Rule::command_list, &raw_input)
+    let commands = ShellParser::parse(Rule::lines, &raw_input)
         .unwrap_or_else(|e| panic!("command parsing failed: {}", e));
-
-    for command in lines {
-        let mut input = Input::default();
-        for command_parts in command.to_owned().into_inner() {
-            match command_parts.as_rule() {
-                Rule::command_name => input.command = command_parts.as_str().to_owned(),
-                Rule::bg_indicator => input.bg = true,
-                Rule::argument => input.args.push(command_parts.as_str().to_owned()),
-                _ => {}
+    // println!("{:#?}", commands);
+    let mut input = Input::default();
+    for command in commands {
+        // println!("{:#?}", command);
+        match command.as_rule() {
+            Rule::command_name => {
+                if input.command.len() > 0 {
+                    inputs.push(input.to_owned());
+                }
+                input = Input::default();
+                input.command = command.as_str().to_owned()
+            }
+            Rule::EOI => {
+                if input.command.len() > 0 {
+                    inputs.push(input.to_owned());
+                }
+            }
+            // Rule::bg_indicator => input.bg = true,
+            Rule::arg => input.args.push(command.as_str().to_owned()),
+            _ => {
+                println!("{:#?}", command);
             }
         }
-
         match input.command.as_ref() {
             "exit" => input.builtin = Builtins::Exit,
             // "echo" => input.builtin = Builtins::Echo,
@@ -38,11 +49,11 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
             _ => {}
         }
 
-        if input.command.len() > 0 {
-            inputs.push(input.to_owned());
-        }
+        // if input.command.len() > 0 {
+        //     // println!("{:#?}", input.args);
+        //     inputs.push(input.to_owned());
+        // }
     }
-
     return inputs;
 }
 

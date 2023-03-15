@@ -65,7 +65,7 @@ fn test_crust_echo_simple() {
 fn test_crust_echo() {
     proptest!(|(arg in "\\PC*")| {
         let mut cmd = Command::cargo_bin("crust").unwrap();
-        let output = cmd.arg("-c").arg(format!("echo {}", &arg)).output().unwrap();
+        let output = cmd.arg("-c").arg(format!("echo '{}'", &arg)).output().unwrap();
         assert!(output.status.success());
         assert_eq!(output.stdout, format!("{}\n", arg).as_bytes());
     });
