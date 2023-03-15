@@ -1,8 +1,10 @@
 // Helper rules
 // Line seperators
-line_sep = _{ "\n" | ";" }
+line_sep = { "\n" | ";" }
 // Whitespace
 ws = _{ " " | "\t"}
+// bg indicator
+bg_indicator = { "&" }
 
 
 // Rule for a single command argument
@@ -12,7 +14,7 @@ arg = { quoted_string | unquoted_string }
 
 // Rule for a single unquoted command argument
 // This rule matches any sequence of characters that is not a space, semicolon, or quote
-unquoted_string = _{ (!("'" | "\"" | ws | line_sep) ~ ANY)+ }
+unquoted_string = _{ (!("'" | "\"" | ws | line_sep | bg_indicator) ~ ANY)+ }
 
 // Rule for the contents that are allowed in a quoted string
 quoted_string_content = { (!("'" | "\"" | ws | "\n") ~ ANY)+ }
@@ -29,4 +31,4 @@ command_name = { unquoted_string }
 command = _{ ws* ~ command_name ~ (ws+ ~ arg)* ~ ws* }
 
 // Define a rule for a multiple line, which consists of one or more commands separated by semicolons or newlines each
-lines = _{ (command ~ (line_sep+ | EOI))* }
+lines = _{ (command ~ ((line_sep+ | bg_indicator) | EOI))* }

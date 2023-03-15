@@ -17,6 +17,9 @@ pub struct Cli {
 
 pub fn handle_args(cli: Cli) -> Option<String> {
     if let Some(command) = cli.command.as_deref() {
+        if command.len() == 0 {
+            exit(0);
+        }
         return Some(command.to_owned());
     }
 
