@@ -14,6 +14,7 @@ pub enum Mode {
     Submit,
     Break,
     Exit,
+    HistoryLookup,
 }
 
 fn exit_raw_mode() {
@@ -23,7 +24,7 @@ fn exit_raw_mode() {
     };
 }
 
-fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
+fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, history: &Vec<String>) {
     if event.modifiers == KeyModifiers::CONTROL && prompt.mode == Mode::Input {
         match event.code {
             KeyCode::Char('c') => {
@@ -76,6 +77,29 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
                 prompt.position = prompt.position + 1;
             }
         }
+        KeyCode::Up if history.len() > 0 && prompt.history_idx < history.len() => {
+            if prompt.history_idx == 0 {
+                prompt.saved_input = prompt.input.to_owned();
+            }
+
+            prompt.input = history[history.len() - (prompt.history_idx + 1)].to_owned();
+            prompt.prev_position = prompt.position;
+            prompt.position = prompt.input.len();
+            prompt.history_idx += 1;
+            prompt.mode = Mode::HistoryLookup;
+        }
+        KeyCode::Down if prompt.history_idx > 0 => {
+            if prompt.history_idx == 1 {
+                prompt.input = prompt.saved_input.to_owned();
+            } else {
+                prompt.input = history[history.len() - prompt.history_idx + 1].to_owned();
+            }
+
+            prompt.prev_position = prompt.position;
+            prompt.position = prompt.input.len();
+            prompt.history_idx -= 1;
+            prompt.mode = Mode::HistoryLookup;
+        }
         KeyCode::Enter => prompt.mode = Mode::Submit,
 
         KeyCode::Tab => {
@@ -86,7 +110,7 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt) {
     }
 }
 
-pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
+pub fn handle_keys(stdout: &mut Stdout, history: &Vec<String>) -> Result<String> {
     match enable_raw_mode() {
         Ok(()) => {}
         Err(_) => panic! {"unable to enter raw mode"},
@@ -98,7 +122,7 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
     loop {
         // `read()` blocks until an `Event` is available
         match read()? {
-            Event::Key(event) => handle_keypressed(event, &mut prompt),
+            Event::Key(event) => handle_keypressed(event, &mut prompt, history),
             _ => {}
         }
 
@@ -123,7 +147,7 @@ pub fn handle_keys(stdout: &mut Stdout) -> Result<String> {
             Mode::Break => {
                 prompt = Prompt::default();
             }
-            _ => {}
+            _ => prompt.mode = Mode::Input,
         }
     }
 }

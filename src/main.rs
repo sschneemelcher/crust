@@ -23,6 +23,7 @@ pub const SHELL_NAME: &str = "crust";
 fn main() {
     let cli = Cli::parse();
     let mut stdout = stdout();
+    let mut history: Vec<String> = vec![];
 
     let input = cli::handle_args(cli).unwrap();
 
@@ -32,10 +33,11 @@ fn main() {
     }
 
     loop {
-        let raw_input = match handle_keys(&mut stdout) {
+        let raw_input = match handle_keys(&mut stdout, &history) {
             Ok(input) => input,
             Err(_) => continue,
         };
+        history.push(raw_input.to_owned());
         shell_cycle(&raw_input);
     }
 }

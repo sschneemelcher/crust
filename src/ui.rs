@@ -18,17 +18,19 @@ pub struct Prompt {
     pub input: String,
     pub mode: Mode,
     pub completions: Vec<String>,
+    pub history_idx: usize,
+    pub prev_position: usize,
+    pub saved_input: String,
 }
 
 pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
+    let mut position: usize = 0;
+
     match prompt.mode {
-        Mode::Submit => {
-            queue!(stdout, Print('\n'), MoveToColumn(0)).ok().unwrap();
-        }
-        Mode::Break => {
-            queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap();
-        }
-        _ => {}
+        Mode::Submit => queue!(stdout, Print('\n'), MoveToColumn(0)).ok().unwrap(),
+        Mode::Break => queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap(),
+        Mode::HistoryLookup => position = prompt.prev_position,
+        _ => position = prompt.position,
     }
 
     let ps2 = match var("PS2") {
@@ -38,7 +40,7 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
 
     queue!(
         stdout,
-        MoveLeft((ps2.len() + prompt.position + 1).try_into().unwrap()),
+        MoveLeft((ps2.len() + position + 1).try_into().unwrap()),
         Clear(FromCursorDown)
     )
     .ok();
