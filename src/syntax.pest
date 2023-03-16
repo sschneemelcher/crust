@@ -25,7 +25,13 @@ quoted_string = { "'" ~ ("\\" ~ "'" | quoted_string_content | ws)+ ~ "'"
 			 	| "\"" ~ ("\\" ~ "\"" | quoted_string_content | ws)+ ~ "\"" }
 
 // Name of the command e.g. `echo` in `echo hello`
-command_name = { unquoted_string }
+command_name = { builtin_command | external_command }
+
+external_command = { unquoted_string }
+builtin_command = { exit | cd }
+
+exit = { "exit" }
+cd = { "cd" }
 
 // Define a rule for a single command, which consists of a command name followed by zero or more arguments
 command = _{ ws* ~ command_name ~ (ws+ ~ arg)* ~ ws* }

@@ -1,6 +1,6 @@
 use crate::Builtins;
 
-use pest::Parser;
+use pest::{iterators::Pair, Parser};
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
@@ -14,6 +14,34 @@ pub struct Input {
     pub builtin: Builtins,
 }
 
+fn parse_command_name(command_name: Pair<Rule>, input: &mut Input) {
+    let command_type = match command_name.to_owned().into_inner().next() {
+        Some(ct) => ct,
+        None => return,
+    };
+    match command_type.as_rule() {
+        Rule::builtin_command => {
+            let builtin = match command_type.into_inner().next() {
+                Some(b) => b,
+                None => return,
+            };
+            match builtin.as_rule() {
+                Rule::exit => {
+                    input.builtin = Builtins::Exit;
+                    input.command = "exit".to_owned();
+                }
+                Rule::cd => {
+                    input.builtin = Builtins::CD;
+                    input.command = "cd".to_owned();
+                }
+                _ => panic!("should not be reached"),
+            }
+        }
+        Rule::external_command => input.command = command_name.as_str().to_owned(),
+        _ => panic!("should not be reached"),
+    }
+}
+
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
 
@@ -23,7 +51,7 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut input = Input::default();
     for command in commands {
         match command.as_rule() {
-            Rule::command_name => input.command = command.as_str().to_owned(),
+            Rule::command_name => parse_command_name(command, &mut input),
             Rule::EOI | Rule::line_sep => {
                 if input.command.len() > 0 {
                     inputs.push(input.to_owned());
@@ -38,13 +66,6 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
             _ => {
                 println!("{:#?}", command);
             }
-        }
-
-        match input.command.as_ref() {
-            "exit" => input.builtin = Builtins::Exit,
-            // "echo" => input.builtin = Builtins::Echo,
-            "cd" => input.builtin = Builtins::CD,
-            _ => {}
         }
     }
     return inputs;
