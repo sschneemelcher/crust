@@ -1,5 +1,5 @@
 use crossterm::{
-    cursor::{MoveToColumn, SavePosition},
+    cursor::{MoveLeft, MoveRight, MoveToColumn, SavePosition},
     execute, queue,
     style::Print,
     terminal::{Clear, ClearType::FromCursorDown},
@@ -23,39 +23,43 @@ pub struct Prompt {
 pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
     match prompt.mode {
         Mode::Submit => {
-            queue!(stdout, Print('\n')).ok().unwrap();
+            queue!(stdout, Print('\n'), MoveToColumn(0)).ok().unwrap();
         }
         Mode::Break => {
-            queue!(stdout, Print("^C\n")).ok().unwrap();
+            queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap();
         }
         _ => {}
     }
 
     print_completions(stdout, &prompt.completions);
 
-    queue!(stdout, MoveToColumn(0), Clear(FromCursorDown)).ok();
+    let ps2 = match var("PS2") {
+        Ok(val) => val,
+        Err(_) => "$ ".to_owned(),
+    };
+
+    queue!(
+        stdout,
+        MoveLeft((ps2.len() + prompt.position + 1).try_into().unwrap()),
+        Clear(FromCursorDown)
+    )
+    .ok();
 
     if prompt.mode == Mode::Submit {
         stdout.flush().ok();
         return;
     }
 
-    let ps2 = match var("PS2") {
-        Ok(val) => val,
-        Err(_) => "$ ".to_owned(),
-    };
+    queue!(stdout, Print(&ps2), Print(&prompt.input)).ok();
 
-    queue!(stdout, Print(&ps2)).ok();
-
-    let pos: u16 = match prompt.mode {
-        Mode::Input => {
-            queue!(stdout, Print(&prompt.input)).ok();
-
-            (ps2.len() + prompt.position).try_into().unwrap()
-        }
-        _ => ps2.len().try_into().unwrap(),
-    };
-    execute!(stdout, MoveToColumn(pos)).ok();
+    if prompt.input.len() != prompt.position {
+        queue!(
+            stdout,
+            MoveLeft((prompt.input.len() - prompt.position).try_into().unwrap())
+        )
+        .ok();
+    }
+    stdout.flush().ok();
 }
 
 fn print_completions(stdout: &mut Stdout, completions: &Vec<String>) {
