@@ -1,6 +1,6 @@
 use crate::Builtins;
 
-use pest::{iterators::Pair, Parser};
+use pest::{error::InputLocation, iterators::Pair, Parser};
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
@@ -14,7 +14,59 @@ pub struct Input {
     pub builtin: Builtins,
 }
 
-fn parse_command_name(command_name: Pair<Rule>, input: &mut Input) {
+pub fn parse_input(raw_input: &str) -> Vec<Input> {
+    let mut inputs: Vec<Input> = vec![];
+
+    let commands = match ShellParser::parse(Rule::lines, &raw_input) {
+        Ok(results) => results,
+        Err(e) => {
+            if let InputLocation::Pos(i) = e.location {
+                println!(
+                    "command parsing failed - unexpected symbol {:#?}",
+                    String::from_utf8(vec![raw_input.as_bytes()[i]])
+                        .ok()
+                        .unwrap()
+                )
+            }
+            return vec![];
+        }
+    };
+
+    let mut input = Input::default();
+    for command in commands {
+        match command.as_rule() {
+            Rule::command_name => command_name(&command, &mut input),
+            Rule::bg_indicator => {
+                input.bg = true;
+                inputs.push(input.to_owned());
+            }
+            Rule::EOI | Rule::line_sep => {
+                if input.command.len() > 0 && !input.bg {
+                    inputs.push(input.to_owned());
+                }
+                input = Input::default();
+            }
+            Rule::arg => input.args.push(command.as_str().to_owned()),
+            _ => {
+                println!("{:#?}", command);
+            }
+        }
+    }
+    return inputs;
+}
+
+#[test]
+fn test_ls() {
+    let inputs: Vec<Input> = parse_input("ls -a -l");
+    assert_eq!(inputs.len(), 1);
+    let input: &Input = &inputs[0];
+    assert_eq!(input.command, "ls");
+    assert_eq!(input.args, ["-a", "-l"]);
+    assert_eq!(input.bg, false);
+    assert_eq!(input.builtin, Builtins::None);
+}
+
+fn command_name(command_name: &Pair<Rule>, input: &mut Input) {
     let command_type = match command_name.to_owned().into_inner().next() {
         Some(ct) => ct,
         None => return,
@@ -40,46 +92,6 @@ fn parse_command_name(command_name: Pair<Rule>, input: &mut Input) {
         Rule::external_command => input.command = command_name.as_str().to_owned(),
         _ => panic!("should not be reached"),
     }
-}
-
-pub fn parse_input(raw_input: &str) -> Vec<Input> {
-    let mut inputs: Vec<Input> = vec![];
-
-    let commands = ShellParser::parse(Rule::lines, &raw_input)
-        .unwrap_or_else(|e| panic!("command parsing failed: {}", e));
-
-    let mut input = Input::default();
-    for command in commands {
-        match command.as_rule() {
-            Rule::command_name => parse_command_name(command, &mut input),
-            Rule::EOI | Rule::line_sep => {
-                if input.command.len() > 0 {
-                    inputs.push(input.to_owned());
-                }
-                input = Input::default();
-            }
-            Rule::bg_indicator => {
-                input.bg = true;
-                inputs.push(input.to_owned())
-            }
-            Rule::arg => input.args.push(command.as_str().to_owned()),
-            _ => {
-                println!("{:#?}", command);
-            }
-        }
-    }
-    return inputs;
-}
-
-#[test]
-fn test_ls() {
-    let inputs: Vec<Input> = parse_input("ls -a -l");
-    assert_eq!(inputs.len(), 1);
-    let input: &Input = &inputs[0];
-    assert_eq!(input.command, "ls");
-    assert_eq!(input.args, ["-a", "-l"]);
-    assert_eq!(input.bg, false);
-    assert_eq!(input.builtin, Builtins::None);
 }
 
 #[test]
