@@ -1,6 +1,6 @@
 use crossterm::{
-    cursor::{MoveLeft, MoveRight, MoveToColumn, SavePosition},
-    execute, queue,
+    cursor::{MoveLeft, MoveToColumn},
+    queue,
     style::Print,
     terminal::{Clear, ClearType::FromCursorDown},
 };
@@ -31,8 +31,6 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         _ => {}
     }
 
-    print_completions(stdout, &prompt.completions);
-
     let ps2 = match var("PS2") {
         Ok(val) => val,
         Err(_) => "$ ".to_owned(),
@@ -44,6 +42,7 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         Clear(FromCursorDown)
     )
     .ok();
+    print_completions(stdout, &prompt.completions);
 
     if prompt.mode == Mode::Submit {
         stdout.flush().ok();
@@ -64,12 +63,10 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
 
 fn print_completions(stdout: &mut Stdout, completions: &Vec<String>) {
     if completions.len() > 1 {
-        queue!(stdout, SavePosition, MoveToColumn(0), Clear(FromCursorDown)).ok();
-
         for completion in completions {
             queue!(stdout, Print(format!("{}    ", completion))).ok();
         }
 
-        queue!(stdout, Print("\n")).ok();
+        queue!(stdout, Print("\n"), MoveToColumn(0)).ok();
     }
 }
