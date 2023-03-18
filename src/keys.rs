@@ -3,7 +3,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
     Result,
 };
-use std::{fs, io::Stdout, process::exit};
+use std::{fs, process::exit};
 
 use crate::ui::{self, Prompt};
 
@@ -17,7 +17,7 @@ pub enum Mode {
     HistoryLookup,
 }
 
-fn exit_raw_mode() {
+pub fn exit_raw_mode() {
     match disable_raw_mode() {
         Ok(()) => {}
         Err(_) => panic! {"unable to exit raw mode"},
@@ -110,14 +110,14 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, history: &Vec<String>
     }
 }
 
-pub fn handle_keys(stdout: &mut Stdout, history: &Vec<String>) -> Result<String> {
+pub fn handle_keys(history: &Vec<String>) -> Result<String> {
     match enable_raw_mode() {
         Ok(()) => {}
         Err(_) => panic! {"unable to enter raw mode"},
     }
 
     let mut prompt = Prompt::default();
-    ui::print_prompt(stdout, &prompt);
+    ui::print_prompt(&prompt);
 
     loop {
         // `read()` blocks until an `Event` is available
@@ -131,7 +131,7 @@ pub fn handle_keys(stdout: &mut Stdout, history: &Vec<String>) -> Result<String>
             prompt.position += &prompt.completions[0].len();
         }
 
-        ui::print_prompt(stdout, &prompt);
+        ui::print_prompt(&prompt);
 
         prompt.completions = vec![];
 

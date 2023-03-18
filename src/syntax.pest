@@ -37,4 +37,6 @@ cd = { "cd" }
 command = _{ ws* ~ command_name ~ (ws+ ~ arg)* ~ ws* }
 
 // Define a rule for a multiple line, which consists of one or more commands separated by semicolons or newlines each
-lines = _{ SOI ~ (command ~ ((line_sep+ ~ !bg_indicator | bg_indicator ~ !line_sep) | EOI))* ~ EOI }
+line = _{ command ~ (line_sep+ ~ !bg_indicator | bg_indicator ~ !line_sep | EOI)}
+
+script = _{ SOI ~ line* }

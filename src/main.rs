@@ -3,7 +3,6 @@ use clap::Parser;
 use keys::handle_keys;
 use parse::Input;
 use run::Builtins;
-use std::io::stdout;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -22,7 +21,6 @@ pub const SHELL_NAME: &str = "crust";
 
 fn main() {
     let cli = Cli::parse();
-    let mut stdout = stdout();
     let mut history: Vec<String> = vec![];
 
     let input = cli::handle_args(cli).unwrap();
@@ -33,7 +31,7 @@ fn main() {
     }
 
     loop {
-        let raw_input = match handle_keys(&mut stdout, &history) {
+        let raw_input = match handle_keys(&history) {
             Ok(input) => input,
             Err(_) => continue,
         };

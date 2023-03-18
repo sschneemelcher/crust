@@ -4,7 +4,7 @@ use pest::{error::InputLocation, iterators::Pair, Parser};
 
 #[derive(Parser)]
 #[grammar = "syntax.pest"]
-struct ShellParser;
+struct CrustParser;
 
 #[derive(Clone, Default)]
 pub struct Input {
@@ -17,7 +17,7 @@ pub struct Input {
 pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let mut inputs: Vec<Input> = vec![];
 
-    let commands = match ShellParser::parse(Rule::lines, &raw_input) {
+    let lines = match CrustParser::parse(Rule::script, &raw_input) {
         Ok(results) => results,
         Err(e) => {
             if let InputLocation::Pos(i) = e.location {
@@ -33,7 +33,7 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
     };
 
     let mut input = Input::default();
-    for command in commands {
+    for command in lines {
         match command.as_rule() {
             Rule::command_name => command_name(&command, &mut input),
             Rule::bg_indicator => {

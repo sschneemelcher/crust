@@ -7,7 +7,7 @@ use crossterm::{
 use std::{
     convert::TryInto,
     env::var,
-    io::{Stdout, Write},
+    io::{stdout, Stdout, Write},
 };
 
 use crate::keys::Mode;
@@ -23,7 +23,8 @@ pub struct Prompt {
     pub saved_input: String,
 }
 
-pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
+pub fn print_prompt(prompt: &Prompt) {
+    let mut stdout = stdout();
     let mut position: usize = 0;
 
     match prompt.mode {
@@ -44,7 +45,7 @@ pub fn print_prompt(stdout: &mut Stdout, prompt: &Prompt) {
         Clear(FromCursorDown)
     )
     .ok();
-    print_completions(stdout, &prompt.completions);
+    print_completions(&mut stdout, &prompt.completions);
 
     if prompt.mode == Mode::Submit {
         stdout.flush().ok();

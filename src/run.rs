@@ -31,13 +31,9 @@ pub fn execute_command(input: &Input) {
                     Err(e) => println!("{:#?}", e),
                 }
             }
-            match child.stdout.take() {
-                None => {}
-                Some(output) => println!("{:?}", output),
-            }
         }
         // if spawning failed, print message
-        Err(_) => println! {"{}: {}", input.command, get_error_message(Errors::CommandNotFound)},
+        Err(_) => {} //println! {"{}: {}", input.command, get_error_message(Errors::CommandNotFound)},
     }
 }
 
