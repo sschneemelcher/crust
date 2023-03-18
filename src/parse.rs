@@ -1,4 +1,7 @@
-use crate::Builtins;
+use crate::{
+    errors::{self, Errors},
+    Builtins,
+};
 
 use pest::{error::InputLocation, iterators::Pair, Parser};
 
@@ -20,14 +23,7 @@ pub fn parse_input(raw_input: &str) -> Vec<Input> {
     let lines = match CrustParser::parse(Rule::script, &raw_input) {
         Ok(results) => results,
         Err(e) => {
-            if let InputLocation::Pos(i) = e.location {
-                println!(
-                    "command parsing failed - unexpected symbol {:#?}",
-                    String::from_utf8(vec![raw_input.as_bytes()[i]])
-                        .ok()
-                        .unwrap()
-                )
-            }
+            println!("{}\n{}", errors::get_error_message(Errors::ParsingError), e);
             return vec![];
         }
     };

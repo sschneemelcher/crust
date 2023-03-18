@@ -25,13 +25,13 @@ pub struct Prompt {
 
 pub fn print_prompt(prompt: &Prompt) {
     let mut stdout = stdout();
-    let mut position: usize = 0;
+    let mut position: usize = prompt.position;
 
     match prompt.mode {
         Mode::Submit => queue!(stdout, Print('\n'), MoveToColumn(0)).ok().unwrap(),
         Mode::Break => queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap(),
         Mode::HistoryLookup => position = prompt.prev_position,
-        _ => position = prompt.position,
+        _ => {}
     }
 
     let ps2 = match var("PS2") {
@@ -42,7 +42,7 @@ pub fn print_prompt(prompt: &Prompt) {
     queue!(
         stdout,
         MoveLeft((ps2.len() + position + 1).try_into().unwrap()),
-        Clear(FromCursorDown)
+        Clear(FromCursorDown),
     )
     .ok();
     print_completions(&mut stdout, &prompt.completions);

@@ -7,6 +7,7 @@ pub enum Errors {
     PermissionDenied,
     FileNotFound,
     InvalidArgument,
+    ParsingError,
 }
 
 pub fn get_error_message(err: Errors) -> String {
@@ -29,7 +30,14 @@ pub fn get_error_message(err: Errors) -> String {
         
         Errors::InvalidArgument => vec!["Uh oh, that argument won't work 🤔. Time to try a different trail.",
                                         "invalid argument 🚫. You need to check your input, partner.",
-                                        "Oops! That argument is invalid 🤨. Try a different one."]
+                                        "Oops! That argument is invalid 🤨. Try a different one."],
+        Errors::ParsingError => vec!["Hold your horses 🐎, seems like there's a problem with that command. Did you miss a quotation mark?",
+                              "Looks like you got some trail mix 🍪 in your command. Maybe check for typos?",
+                              "Yeehaw! That command ain't quite right 🤠. Did you forget a semicolon or pipe?",
+                              "Dangnabbit, the sheriff can't make sense of that command 🤔. Did you mix up some keywords?",
+                              "Well I'll be! The sheriff's having trouble parsing that command 🤯. Did you use an unsupported character?",
+                              "Looks like there's a snake in your command 🐍. The sheriff can't parse it.",
+                              "Uh oh, seems like that command didn't make it across the Rio Grande 🌊. Did you escape all special characters properly?"]
     };
     let n: usize = rng.gen_range(0..choices.len());
 
