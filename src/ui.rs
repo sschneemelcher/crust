@@ -23,14 +23,19 @@ pub struct Prompt {
     pub saved_input: String,
 }
 
+/* Print the prompt to the screen 
+ * 
+ * This function is responsible for printing the prompt to the screen. It will
+ * print the prompt, the input, and any completions. It will also handle
+ * printing the prompt in different modes.
+ */
+
 pub fn print_prompt(prompt: &Prompt) {
     let mut stdout = stdout();
-    let mut position: usize = prompt.position;
 
     match prompt.mode {
         Mode::Submit => queue!(stdout, Print('\n'), MoveToColumn(0)).ok().unwrap(),
         Mode::Break => queue!(stdout, Print("^C\n"), MoveToColumn(0)).ok().unwrap(),
-        Mode::HistoryLookup => position = prompt.prev_position,
         _ => {}
     }
 
@@ -41,7 +46,7 @@ pub fn print_prompt(prompt: &Prompt) {
 
     queue!(
         stdout,
-        MoveLeft((ps2.len() + position + 1).try_into().unwrap()),
+        MoveLeft((ps2.len() + prompt.prev_position).try_into().unwrap()),
         Clear(FromCursorDown),
     )
     .ok();

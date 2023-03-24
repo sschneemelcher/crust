@@ -25,6 +25,7 @@ pub fn exit_raw_mode() {
 }
 
 fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, history: &Vec<String>) {
+    prompt.prev_position = prompt.position;
     if event.modifiers == KeyModifiers::CONTROL && prompt.mode == Mode::Input {
         match event.code {
             KeyCode::Char('c') => {
@@ -83,7 +84,6 @@ fn handle_keypressed(event: KeyEvent, prompt: &mut Prompt, history: &Vec<String>
             }
 
             prompt.input = history[history.len() - (prompt.history_idx + 1)].to_owned();
-            prompt.prev_position = prompt.position;
             prompt.position = prompt.input.len();
             prompt.history_idx += 1;
             prompt.mode = Mode::HistoryLookup;
